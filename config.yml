@@ -1,0 +1,11 @@
+contract-name: tlaclocmant2
+doc-table-name: documents
+#firehose-endpoint: localhost:9000
+firehose-endpoint: fh.tekit.io:443
+eos-endpoint: https://testnet.telos.caleos.io
+elastic-endpoint: https://localhost:9200 #username and password should be set using env vars ES_USER, ES_PASSWORD
+elastic-ca: /home/sebastian/vsc-workspace/elastic-helm-charts/elasticsearch/examples/security/elastic-certificate.pem
+prometheus-port: 2114
+start-block: 150666116
+heart-beat-frequency: 100
+#dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
