@@ -7,23 +7,15 @@ import (
 
 var (
 	CreatedDocs = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "hypha_graph_document_cache_created_docs",
+		Name: "document_graph_elasticsearch_created_docs",
 		Help: "# of created documents",
 	})
-	CreatedEdges = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "hypha_graph_document_cache_created_edges",
-		Help: "# of created edges",
-	})
 	DeletedDocs = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "hypha_graph_document_cache_deleted_docs",
+		Name: "document_graph_elasticsearch_deleted_docs",
 		Help: "# of deleted documents",
 	})
-	DeletedEdges = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "hypha_graph_document_cache_deleted_edges",
-		Help: "# of deleted edges",
-	})
 	BlockNumber = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "hypha_graph_document_cache_block_number",
+		Name: "document_graph_elasticsearch_block_number",
 		Help: "Block Number",
 	})
 )
