@@ -5,6 +5,7 @@ import (
 
 	"github.com/sebastianmontero/document-graph-elasticsearch/service"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache/domain"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
 	"github.com/sebastianmontero/slog-go/slog"
 )
 
@@ -37,11 +38,10 @@ func NewDocumentBeat(elasticSearch *service.ElasticSearch, logConfig *slog.Confi
 
 func (m *DocumentBeat) StoreDocument(chainDoc *domain.ChainDocument, cursor string) error {
 	log.Infof("Storing chain document: %v, cursor: %v", chainDoc, cursor)
-	parsedDoc, err := chainDoc.ToParsedDoc(nil)
+	doc, err := toParsedDoc(chainDoc)
 	if err != nil {
 		return fmt.Errorf("failed storing document: %v, error: %v", chainDoc, err)
 	}
-	doc := parsedDoc.Instance.Values
 	log.Infof("Storing parsed document: %v, cursor: %v", doc, cursor)
 	_, err = m.ElasticSearch.Upsert(DocumentIndex, doc["docId"].(string), doc)
 	if err != nil {
@@ -146,4 +146,19 @@ func (m *DocumentBeat) deleteIndex(index string) error {
 		}
 	}
 	return nil
+}
+
+func toParsedDoc(chainDoc *domain.ChainDocument) (map[string]interface{}, error) {
+	parsedDoc, err := chainDoc.ToParsedDoc(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse chain doc: %v, error: %v", chainDoc, err)
+	}
+	fields := parsedDoc.Instance.SimplifiedType.Fields
+	values := parsedDoc.Instance.Values
+	for _, f := range fields {
+		if f.Name != "docId_i" && f.Type == gql.GQLType_Int64 {
+			values[fmt.Sprintf("%v_s", f.Name)] = fmt.Sprintf("%v", values[f.Name])
+		}
+	}
+	return values, nil
 }

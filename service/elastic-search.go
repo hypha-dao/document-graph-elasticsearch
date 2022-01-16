@@ -179,6 +179,52 @@ func (m *ElasticSearch) DeleteDocument(index, documentId string, failIfNotExists
 	return r, nil
 }
 
+func (m *ElasticSearch) UpsertIndex(index, indexBody string) (map[string]interface{}, error) {
+
+	req := esapi.IndicesCreateRequest{
+		Index: index,
+		Body:  strings.NewReader(string(indexBody)),
+	}
+	res, err := req.Do(context.Background(), m.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed upserting index: %v, body: %v, error: %v", index, indexBody, err)
+	}
+	defer res.Body.Close()
+	if res.IsError() {
+		return nil, fmt.Errorf("failed upserting index: %v, body: %v, status: %v", index, indexBody, res.Status())
+	}
+	// Deserialize the response into a map.
+	var r map[string]interface{}
+	err = json.NewDecoder(res.Body).Decode(&r)
+	if err != nil {
+		return nil, fmt.Errorf("failed parsing the response body from upserting index, index: %v, body: %v, error: %v", index, indexBody, err)
+	}
+	return r, nil
+}
+
+func (m *ElasticSearch) GetIndex(index string) (map[string]interface{}, error) {
+
+	req := esapi.IndicesGetRequest{
+		Index: []string{index},
+	}
+	res, err := req.Do(context.Background(), m.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting index: %v, error: %v", index, err)
+	}
+	defer res.Body.Close()
+	if res.IsError() {
+		return nil, fmt.Errorf("failed getting index: %v, status: %v", index, res.Status())
+	}
+	// Deserialize the response into a map.
+	var r map[string]interface{}
+	err = json.NewDecoder(res.Body).Decode(&r)
+	if err != nil {
+		return nil, fmt.Errorf("failed parsing the response body from getting index: %v, error: %v", index, err)
+	}
+	return r, nil
+	// return r["_source"].(map[string]interface{}), nil
+}
+
 func isNotExistsError(res *esapi.Response) bool {
 	return strings.Contains(res.Status(), "404")
 }

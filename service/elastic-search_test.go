@@ -1,8 +1,10 @@
 package service_test
 
 import (
+	"encoding/json"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/sebastianmontero/document-graph-elasticsearch/config"
@@ -149,5 +151,56 @@ func TestDeleteDocument(t *testing.T) {
 
 	_, err = elasticSearch.DeleteDocument(index, doc1Id, false)
 	assert.NilError(t, err)
+
+}
+
+func TestUpsertIndex(t *testing.T) {
+
+	index := "prueba2"
+	indexBody := `
+	{
+		"settings": {
+			"index": {
+				"max_ngram_diff": 2
+			},
+			"analysis": {
+				"analyzer": {
+					"default": {
+						"tokenizer": "whitespace",
+						"filter": [ "3_5_grams" ]
+					}
+				},
+				"filter": {
+					"3_5_grams": {
+						"type": "ngram",
+						"min_gram": 3,
+						"max_gram": 5
+					}
+				}
+			}
+		}
+	}
+	`
+	exists, err := elasticSearch.IndexExists(index)
+	assert.NilError(t, err)
+	if exists {
+		_, err := elasticSearch.DeleteIndex(index)
+		assert.NilError(t, err)
+	}
+
+	_, err = elasticSearch.UpsertIndex(index, indexBody)
+	assert.NilError(t, err)
+
+	exists, err = elasticSearch.IndexExists(index)
+	assert.NilError(t, err)
+	assert.Assert(t, exists)
+
+	res, err := elasticSearch.GetIndex(index)
+	assert.NilError(t, err)
+	resJSON, err := json.Marshal(res)
+	assert.NilError(t, err)
+	resJSONStr := string(resJSON)
+	assert.Assert(t, strings.Contains(resJSONStr, "\"filter\":[\"3_5_grams\"]"))
+	assert.Assert(t, strings.Contains(resJSONStr, "\"tokenizer\":\"whitespace\""))
 
 }

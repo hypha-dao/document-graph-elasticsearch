@@ -188,10 +188,12 @@ func TestOpCycle(t *testing.T) {
 		"details_rootNode_n":             "dao.hypha",
 		"details_hvoiceSalaryPerPhase_a": "4133.04 HVOICE",
 		"details_timeShareX100_i":        int64(60),
+		"details_timeShareX100_i_s":      "60",
 		"details_strToInt_s":             "60",
 		"delete_rootNode_n":              "dao.hypha",
 		"delete_hvoiceSalaryPerPhase_a":  "4133.04 HVOICE",
 		"delete_timeShareX100_i":         int64(90),
+		"delete_timeShareX100_i_s":       "90",
 		"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
 	}
 	cursor = "cursor1"
@@ -286,6 +288,7 @@ func TestOpCycle(t *testing.T) {
 		"type":                          "Dho",
 		"details_rootNode_n":            "dao.hypha1",
 		"details_timeShareX100_i":       int64(80),
+		"details_timeShareX100_i_s":     "80",
 		"details_strToInt_s":            "70",
 		"system_originalApprovedDate_t": "2021-04-12T05:09:36.5Z",
 	}
@@ -499,13 +502,14 @@ func getPeriodDoc(id uint64, number int64) *domain.ChainDocument {
 
 func getPeriodValues(docId uint64, number int64) map[string]interface{} {
 	return map[string]interface{}{
-		"docId":            strconv.FormatUint(docId, 10),
-		"docId_i":          docId,
-		"createdDate":      "2020-11-12T18:27:47.000Z",
-		"updatedDate":      "2020-11-12T19:27:47.000Z",
-		"creator":          "dao.hypha",
-		"contract":         "contract1",
-		"type":             "Period",
-		"details_number_i": number,
+		"docId":              strconv.FormatUint(docId, 10),
+		"docId_i":            docId,
+		"createdDate":        "2020-11-12T18:27:47.000Z",
+		"updatedDate":        "2020-11-12T19:27:47.000Z",
+		"creator":            "dao.hypha",
+		"contract":           "contract1",
+		"type":               "Period",
+		"details_number_i":   number,
+		"details_number_i_s": fmt.Sprintf("%v", number),
 	}
 }
