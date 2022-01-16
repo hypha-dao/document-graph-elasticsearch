@@ -221,8 +221,54 @@ func (m *ElasticSearch) GetIndex(index string) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed parsing the response body from getting index: %v, error: %v", index, err)
 	}
+	return r[index].(map[string]interface{}), nil
+}
+
+//Can be used to add new field mappings, but not to update existing fields
+//if a field needs to change a new index needs to be created and data reindexed
+func (m *ElasticSearch) UpdateMappings(index, mappingsBody string) (map[string]interface{}, error) {
+
+	req := esapi.IndicesPutMappingRequest{
+		Index: []string{index},
+		Body:  strings.NewReader(string(mappingsBody)),
+	}
+	res, err := req.Do(context.Background(), m.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed updating mappings: %v, body: %v, error: %v", index, mappingsBody, err)
+	}
+	defer res.Body.Close()
+	if res.IsError() {
+		return nil, fmt.Errorf("failed updating mappings: %v, body: %v, status: %v", index, mappingsBody, res.Status())
+	}
+	// Deserialize the response into a map.
+	var r map[string]interface{}
+	err = json.NewDecoder(res.Body).Decode(&r)
+	if err != nil {
+		return nil, fmt.Errorf("failed parsing the response body from updating mappings, index: %v, body: %v, error: %v", index, mappingsBody, err)
+	}
 	return r, nil
-	// return r["_source"].(map[string]interface{}), nil
+}
+
+func (m *ElasticSearch) GetMappings(index string) (map[string]interface{}, error) {
+
+	req := esapi.IndicesGetMappingRequest{
+		Index: []string{index},
+	}
+	res, err := req.Do(context.Background(), m.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting mappings: %v, error: %v", index, err)
+	}
+	defer res.Body.Close()
+	if res.IsError() {
+		return nil, fmt.Errorf("failed getting mappings: %v, status: %v", index, res.Status())
+	}
+	// Deserialize the response into a map.
+	var r map[string]interface{}
+	err = json.NewDecoder(res.Body).Decode(&r)
+	if err != nil {
+		return nil, fmt.Errorf("failed parsing the response body from getting mappings: %v, error: %v", index, err)
+	}
+	return r[index].(map[string]interface{}), nil
 }
 
 func isNotExistsError(res *esapi.Response) bool {

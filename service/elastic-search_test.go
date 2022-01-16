@@ -204,3 +204,74 @@ func TestUpsertIndex(t *testing.T) {
 	assert.Assert(t, strings.Contains(resJSONStr, "\"tokenizer\":\"whitespace\""))
 
 }
+
+func TestUpdateMappings(t *testing.T) {
+
+	index := "prueba3"
+	mappingsBody := `
+	{
+		"properties": {
+			"title":  { "type": "text"}
+		}
+	}
+	`
+	indexBody := `
+	{
+		"settings": {
+			"analysis": {
+				"analyzer": {
+					"default": {
+						"tokenizer": "standard"
+					}
+				}
+			}
+		}
+	}
+	`
+	exists, err := elasticSearch.IndexExists(index)
+	assert.NilError(t, err)
+	if exists {
+		_, err := elasticSearch.DeleteIndex(index)
+		assert.NilError(t, err)
+	}
+
+	_, err = elasticSearch.UpsertIndex(index, indexBody)
+	assert.NilError(t, err)
+
+	exists, err = elasticSearch.IndexExists(index)
+	assert.NilError(t, err)
+	assert.Assert(t, exists)
+
+	_, err = elasticSearch.UpdateMappings(index, mappingsBody)
+	assert.NilError(t, err)
+
+	exists, err = elasticSearch.IndexExists(index)
+	assert.NilError(t, err)
+	assert.Assert(t, exists)
+
+	res, err := elasticSearch.GetMappings(index)
+	assert.NilError(t, err)
+	resJSON, err := json.Marshal(res)
+	assert.NilError(t, err)
+	resJSONStr := string(resJSON)
+	assert.Assert(t, strings.Contains(resJSONStr, "\"title\":{\"type\":\"text\"}"))
+
+	mappingsBody = `
+	{
+		"properties": {
+			"name": { "type": "keyword" }
+		}
+	}
+	`
+	_, err = elasticSearch.UpdateMappings(index, mappingsBody)
+	assert.NilError(t, err)
+
+	res, err = elasticSearch.GetMappings(index)
+	assert.NilError(t, err)
+	resJSON, err = json.Marshal(res)
+	assert.NilError(t, err)
+	resJSONStr = string(resJSON)
+	assert.Assert(t, strings.Contains(resJSONStr, "\"title\":{\"type\":\"text\"}"))
+	assert.Assert(t, strings.Contains(resJSONStr, "\"name\":{\"type\":\"keyword\"}"))
+
+}
