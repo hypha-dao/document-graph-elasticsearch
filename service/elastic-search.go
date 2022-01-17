@@ -18,10 +18,14 @@ type ElasticSearch struct {
 
 func NewElasticSearch(config *config.Config) (*ElasticSearch, error) {
 
-	cert, err := ioutil.ReadFile(config.ElasticCA)
+	var cert []byte
 
-	if err != nil {
-		return nil, fmt.Errorf("failed reading elastic CA file: %v, error: %v", config.ElasticCA, err)
+	if config.ElasticCA != "" {
+		var err error
+		cert, err = ioutil.ReadFile(config.ElasticCA)
+		if err != nil {
+			return nil, fmt.Errorf("failed reading elastic CA file: %v, error: %v", config.ElasticCA, err)
+		}
 	}
 
 	cfg := elasticsearch7.Config{
