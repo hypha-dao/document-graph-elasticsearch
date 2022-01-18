@@ -3,6 +3,7 @@ package beat
 import (
 	"fmt"
 
+	"github.com/sebastianmontero/document-graph-elasticsearch/config"
 	"github.com/sebastianmontero/document-graph-elasticsearch/service"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache/domain"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
@@ -19,13 +20,15 @@ var log *slog.Log
 type DocumentBeat struct {
 	ElasticSearch *service.ElasticSearch
 	Cursor        string
+	Config        *config.Config
 }
 
-func NewDocumentBeat(elasticSearch *service.ElasticSearch, logConfig *slog.Config) (*DocumentBeat, error) {
+func NewDocumentBeat(elasticSearch *service.ElasticSearch, config *config.Config, logConfig *slog.Config) (*DocumentBeat, error) {
 	log = slog.New(logConfig, "document-beat")
 
 	docbeat := &DocumentBeat{
 		ElasticSearch: elasticSearch,
+		Config:        config,
 	}
 	cursor, err := docbeat.GetCursor()
 
@@ -36,35 +39,35 @@ func NewDocumentBeat(elasticSearch *service.ElasticSearch, logConfig *slog.Confi
 	return docbeat, nil
 }
 
-func (m *DocumentBeat) StoreDocument(chainDoc *domain.ChainDocument, cursor string) error {
-	log.Infof("Storing chain document: %v, cursor: %v", chainDoc, cursor)
+func (m *DocumentBeat) StoreDocument(chainDoc *domain.ChainDocument, cursor string, contractConfig *config.ContractConfig) error {
+	log.Infof("Storing chain document: %v, cursor: %v, contract config: %v", chainDoc, cursor, contractConfig)
 	doc, err := toParsedDoc(chainDoc)
 	if err != nil {
-		return fmt.Errorf("failed storing document: %v, error: %v", chainDoc, err)
+		return fmt.Errorf("failed storing document: %v, cursor: %v, contract config: %v, error: %v", chainDoc, cursor, contractConfig, err)
 	}
 	log.Infof("Storing parsed document: %v, cursor: %v", doc, cursor)
-	_, err = m.ElasticSearch.Upsert(DocumentIndex, doc["docId"].(string), doc)
+	_, err = m.ElasticSearch.Upsert(getDocIndexName(contractConfig.IndexPrefix), doc["docId"].(string), doc)
 	if err != nil {
-		return fmt.Errorf("failed storing document: %v, error: %v", doc, err)
+		return fmt.Errorf("failed storing document: %v, cursor: %v, contract config: %v, error: %v", doc, cursor, contractConfig, err)
 	}
 	return m.UpdateCursor(cursor)
 }
 
-func (m *DocumentBeat) DeleteDocument(chainDoc *domain.ChainDocument, cursor string) error {
-	log.Infof("Deleting chain document: %v, cursor: %v", chainDoc, cursor)
+func (m *DocumentBeat) DeleteDocument(chainDoc *domain.ChainDocument, cursor string, contractConfig *config.ContractConfig) error {
+	log.Infof("Deleting chain document: %v, cursor: %v, contract config: %v", chainDoc, cursor, contractConfig)
 
-	_, err := m.ElasticSearch.DeleteDocument(DocumentIndex, chainDoc.GetDocId(), false)
+	_, err := m.ElasticSearch.DeleteDocument(getDocIndexName(contractConfig.IndexPrefix), chainDoc.GetDocId(), false)
 	if err != nil {
-		return fmt.Errorf("failed deleting document: %v, error: %v", chainDoc.GetDocId(), err)
+		return fmt.Errorf("failed deleting document: %v, cursor: %v, contract config: %v, error: %v", chainDoc.GetDocId(), cursor, contractConfig, err)
 	}
 	return m.UpdateCursor(cursor)
 }
 
 func (m *DocumentBeat) UpdateCursor(cursor string) error {
 	// log.Infof("Updating cursor: %v", cursor)
-	_, err := m.ElasticSearch.Upsert(CursorIndex, CursorId, map[string]string{"cursor": cursor})
+	_, err := m.ElasticSearch.Upsert(getCursorIndexName(m.Config.CursorIndexPrefix), CursorId, map[string]string{"cursor": cursor})
 	if err != nil {
-		return fmt.Errorf("failed updating cursor, error: %v", err)
+		return fmt.Errorf("failed updating cursor, name: %v, value: %v, error: %v", getCursorIndexName(m.Config.CursorIndexPrefix), cursor, err)
 	}
 	return nil
 }
@@ -80,57 +83,57 @@ func (m *DocumentBeat) GetCursor() (string, error) {
 		return "", nil
 	}
 	log.Infof("Getting current cursor")
-	doc, err := m.ElasticSearch.Get(CursorIndex, CursorId)
+	doc, err := m.ElasticSearch.Get(getCursorIndexName(m.Config.CursorIndexPrefix), CursorId)
 	if err != nil {
-		return "", fmt.Errorf("failed getting cursor, index: %v, id: %v, error: %v", CursorIndex, CursorId, err)
+		return "", fmt.Errorf("failed getting cursor, index: %v, id: %v, error: %v", getCursorIndexName(m.Config.CursorIndexPrefix), CursorId, err)
 	}
 	return doc[CursorProperty].(string), nil
 }
 
 func (m *DocumentBeat) CursorExists() (bool, error) {
 	log.Infof("Checking if cursor exists")
-	exists, err := m.ElasticSearch.DocumentExists(CursorIndex, CursorId)
+	exists, err := m.ElasticSearch.DocumentExists(getCursorIndexName(m.Config.CursorIndexPrefix), CursorId)
 
 	if err != nil {
-		return false, fmt.Errorf("failed checking if cursor exists, index: %v, id: %v, error: %v", CursorIndex, CursorId, err)
+		return false, fmt.Errorf("failed checking if cursor exists, index: %v, id: %v, error: %v", getCursorIndexName(m.Config.CursorIndexPrefix), CursorId, err)
 	}
 	return exists, nil
 }
 
-func (m *DocumentBeat) GetDocument(docId string) (map[string]interface{}, error) {
+func (m *DocumentBeat) GetDocument(docId, docIndexPrefix string) (map[string]interface{}, error) {
 
-	exists, err := m.DocumentExists(docId)
+	exists, err := m.DocumentExists(docId, docIndexPrefix)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		log.Infof("Document: %v, index: %v  does not exist", docId, DocumentIndex)
+		log.Infof("Document: %v, index: %v  does not exist", docId, getDocIndexName(docIndexPrefix))
 		return nil, nil
 	}
-	log.Infof("Getting document: %v, index: %v", docId, DocumentIndex)
-	doc, err := m.ElasticSearch.Get(DocumentIndex, docId)
+	log.Infof("Getting document: %v, index: %v", docId, getDocIndexName(docIndexPrefix))
+	doc, err := m.ElasticSearch.Get(getDocIndexName(docIndexPrefix), docId)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting document, index: %v, id: %v, error: %v", DocumentIndex, docId, err)
+		return nil, fmt.Errorf("failed getting document, index: %v, id: %v, error: %v", getDocIndexName(docIndexPrefix), docId, err)
 	}
 	return doc, nil
 }
 
-func (m *DocumentBeat) DocumentExists(docId string) (bool, error) {
+func (m *DocumentBeat) DocumentExists(docId, docIndexPrefix string) (bool, error) {
 	log.Infof("Checking if document: %v exists", docId)
-	exists, err := m.ElasticSearch.DocumentExists(DocumentIndex, docId)
+	exists, err := m.ElasticSearch.DocumentExists(getDocIndexName(docIndexPrefix), docId)
 
 	if err != nil {
-		return false, fmt.Errorf("failed checking if document exists, index: %v, id: %v, error: %v", DocumentIndex, docId, err)
+		return false, fmt.Errorf("failed checking if document exists, index: %v, id: %v, error: %v", getDocIndexName(docIndexPrefix), docId, err)
 	}
 	return exists, nil
 }
 
-func (m *DocumentBeat) DeleteDocumentIndex() error {
-	return m.deleteIndex(DocumentIndex)
+func (m *DocumentBeat) DeleteDocumentIndex(docIndexPrefix string) error {
+	return m.deleteIndex(getDocIndexName(docIndexPrefix))
 }
 
 func (m *DocumentBeat) DeleteCursorIndex() error {
-	return m.deleteIndex(CursorIndex)
+	return m.deleteIndex(getCursorIndexName(m.Config.CursorIndexPrefix))
 }
 
 func (m *DocumentBeat) deleteIndex(index string) error {
@@ -161,4 +164,16 @@ func toParsedDoc(chainDoc *domain.ChainDocument) (map[string]interface{}, error)
 		}
 	}
 	return values, nil
+}
+
+func getIndexName(prefix, suffix string) string {
+	return fmt.Sprintf(`%v-%v`, prefix, suffix)
+}
+
+func getDocIndexName(prefix string) string {
+	return getIndexName(prefix, DocumentIndex)
+}
+
+func getCursorIndexName(prefix string) string {
+	return getIndexName(prefix, CursorIndex)
 }

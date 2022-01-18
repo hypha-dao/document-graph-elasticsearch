@@ -1,5 +1,3 @@
-contract-name: tlaclocmant2
-doc-table-name: documents
 #firehose-endpoint: localhost:9000
 firehose-endpoint: fh.tekit.io:443
 eos-endpoint: https://testnet.telos.caleos.io
@@ -9,3 +7,4 @@ prometheus-port: 2114
 start-block: 149760151
 heart-beat-frequency: 100
 #dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
+cursor-index-prefix: testnet1

@@ -30,8 +30,8 @@ type deltaStreamHandler struct {
 
 func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, forkStep pbbstream.ForkStep) {
 	log.Debugf("On Delta: \nCursor: %v \nFork Step: %v \nDelta %v ", cursor, forkStep, delta)
-	log.Debugf("Doc table name: %v ", m.config.DocTableName)
-	if delta.TableName == m.config.DocTableName {
+	contractConfig := m.config.Contracts.Get(delta.Code, delta.TableName)
+	if contractConfig != nil {
 		chainDoc := &domain.ChainDocument{}
 		switch delta.Operation {
 		case pbcodec.DBOp_OPERATION_INSERT, pbcodec.DBOp_OPERATION_UPDATE:
@@ -40,7 +40,7 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 				log.Panicf(err, "Error unmarshalling doc new data: %v", string(delta.NewData))
 			}
 			log.Tracef("Storing doc: %v ", chainDoc)
-			err = m.documentBeat.StoreDocument(chainDoc, cursor)
+			err = m.documentBeat.StoreDocument(chainDoc, cursor, contractConfig)
 			if err != nil {
 				log.Panicf(err, "Failed to store doc: %v", chainDoc)
 			}
@@ -50,7 +50,7 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 			if err != nil {
 				log.Panicf(err, "Error unmarshalling doc old data: %v", string(delta.OldData))
 			}
-			err = m.documentBeat.DeleteDocument(chainDoc, cursor)
+			err = m.documentBeat.DeleteDocument(chainDoc, cursor, contractConfig)
 			if err != nil {
 				log.Panicf(err, "Failed to delete doc: %v", chainDoc)
 			}
@@ -103,7 +103,7 @@ func main() {
 	if err != nil {
 		log.Panic(err, "Error creating elastic search client")
 	}
-	docbeat, err := beat.NewDocumentBeat(elasticSearch, nil)
+	docbeat, err := beat.NewDocumentBeat(elasticSearch, config, nil)
 	if err != nil {
 		log.Panic(err, "Error creating docbeat client")
 	}
@@ -117,7 +117,10 @@ func main() {
 		HeartBeatFrequency: config.HeartBeatFrequency,
 	}
 	// deltaRequest.AddTables("eosio.token", []string{"balance"})
-	deltaRequest.AddTables(config.ContractName, []string{config.DocTableName})
+	for _, contract := range config.Contracts {
+		deltaRequest.AddTables(contract.Name, []string{contract.DocTableName})
+	}
+
 	client.DeltaStream(deltaRequest, &deltaStreamHandler{
 		documentBeat: docbeat,
 		config:       config,

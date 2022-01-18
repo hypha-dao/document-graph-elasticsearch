@@ -16,6 +16,9 @@ import (
 
 var elasticSearch *service.ElasticSearch
 var docbeat *beat.DocumentBeat
+var contractsConfig config.ContractsConfig
+var contract1Config *config.ContractConfig
+var contract2Config *config.ContractConfig
 
 func TestMain(m *testing.M) {
 	beforeAll()
@@ -29,17 +32,33 @@ func TestMain(m *testing.M) {
 
 func beforeAll() {
 	var err error
+	contract1Config = &config.ContractConfig{
+		Name:         "contract1",
+		DocTableName: "documents",
+		IndexPrefix:  "test1",
+	}
+	contract2Config = &config.ContractConfig{
+		Name:         "contract2",
+		DocTableName: "documents",
+		IndexPrefix:  "test2",
+	}
+	contractsConfig = config.ContractsConfig{
+		"contract1": contract1Config,
+		"contract2": contract2Config,
+	}
 	config := &config.Config{
-		ElasticEndpoint: "https://localhost:9200",
-		ElasticCA:       "/home/sebastian/vsc-workspace/elastic-helm-charts/elasticsearch/examples/security/elastic-certificate.pem",
-		ElasticUser:     "elastic",
-		ElasticPassword: "8GXQlCxXy0p8bSilFMqI",
+		Contracts:         contractsConfig,
+		CursorIndexPrefix: "test",
+		ElasticEndpoint:   "https://localhost:9200",
+		ElasticCA:         "/home/sebastian/vsc-workspace/elastic-helm-charts/elasticsearch/examples/security/elastic-certificate.pem",
+		ElasticUser:       "elastic",
+		ElasticPassword:   "8GXQlCxXy0p8bSilFMqI",
 	}
 	elasticSearch, err = service.NewElasticSearch(config)
 	if err != nil {
 		log.Fatal(err, "Failed creating elasticSearch client")
 	}
-	docbeat, err = beat.NewDocumentBeat(elasticSearch, nil)
+	docbeat, err = beat.NewDocumentBeat(elasticSearch, config, nil)
 	if err != nil {
 		log.Fatal(err, "Failed creating docbeat client")
 	}
@@ -51,8 +70,11 @@ func afterAll() {
 func setup(t *testing.T) {
 	err := docbeat.DeleteCursorIndex()
 	assert.NilError(t, err)
-	err = docbeat.DeleteDocumentIndex()
-	assert.NilError(t, err)
+	for _, contractConfig := range contractsConfig {
+		err = docbeat.DeleteDocumentIndex(contractConfig.IndexPrefix)
+		assert.NilError(t, err)
+	}
+
 }
 
 func TestClearIndexes(t *testing.T) {
@@ -69,12 +91,19 @@ func TestOpCycle(t *testing.T) {
 	periodDoc := getPeriodDoc(period1IdI, 1)
 	expectedPeriodDoc := getPeriodValues(period1IdI, 1)
 	cursor := "cursor0"
-	err := docbeat.StoreDocument(periodDoc, cursor)
+	t.Logf("Storing period 1 document in contract1 index")
+	err := docbeat.StoreDocument(periodDoc, cursor, contract1Config)
 	assert.NilError(t, err)
-	assertDoc(t, expectedPeriodDoc)
+	assertDoc(t, expectedPeriodDoc, contract1Config.IndexPrefix)
 	assertCursor(t, cursor)
 
-	t.Logf("Storing dho document")
+	cursor = "cursor1"
+	t.Logf("Storing period 1 document in contract2 index")
+	err = docbeat.StoreDocument(periodDoc, cursor, contract2Config)
+	assert.NilError(t, err)
+	assertDoc(t, expectedPeriodDoc, contract2Config.IndexPrefix)
+	assertCursor(t, cursor)
+
 	dhoId := "2"
 	dhoIdI, _ := strconv.ParseUint(dhoId, 10, 64)
 	dhoDoc := &domain.ChainDocument{
@@ -196,10 +225,18 @@ func TestOpCycle(t *testing.T) {
 		"delete_timeShareX100_i_s":       "90",
 		"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
 	}
-	cursor = "cursor1"
-	err = docbeat.StoreDocument(dhoDoc, cursor)
+	t.Logf("Storing dho document in contract1 index")
+	cursor = "cursor2"
+	err = docbeat.StoreDocument(dhoDoc, cursor, contract1Config)
 	assert.NilError(t, err)
-	assertDoc(t, expectedDHODoc)
+	assertDoc(t, expectedDHODoc, contract1Config.IndexPrefix)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing dho document in contract2 index")
+	cursor = "cursor3"
+	err = docbeat.StoreDocument(dhoDoc, cursor, contract2Config)
+	assert.NilError(t, err)
+	assertDoc(t, expectedDHODoc, contract2Config.IndexPrefix)
 	assertCursor(t, cursor)
 
 	t.Logf("Storing member document")
@@ -207,11 +244,11 @@ func TestOpCycle(t *testing.T) {
 	member1IdI, _ := strconv.ParseUint(member1Id, 10, 64)
 	memberDoc := getMemberDoc(member1IdI, "member1")
 	expectedMemberDoc := getMemberValues(member1IdI, "member1")
-	cursor = "cursor2_1"
+	cursor = "cursor4"
 
-	err = docbeat.StoreDocument(memberDoc, cursor)
+	err = docbeat.StoreDocument(memberDoc, cursor, contract1Config)
 	assert.NilError(t, err)
-	assertDoc(t, expectedMemberDoc)
+	assertDoc(t, expectedMemberDoc, contract1Config.IndexPrefix)
 	assertCursor(t, cursor)
 
 	t.Logf("Updating dho document")
@@ -292,34 +329,46 @@ func TestOpCycle(t *testing.T) {
 		"details_strToInt_s":            "70",
 		"system_originalApprovedDate_t": "2021-04-12T05:09:36.5Z",
 	}
-	cursor = "cursor3"
-	err = docbeat.StoreDocument(dhoDoc, cursor)
-	assert.NilError(t, err)
-	assertDoc(t, expectedDHODoc)
-	assertCursor(t, cursor)
-
-	cursor = "cursor4"
-	err = docbeat.DeleteDocument(dhoDoc, cursor)
-	assert.NilError(t, err)
-	assertDocNotExists(t, dhoId)
-	assertCursor(t, cursor)
-
 	cursor = "cursor5"
-	err = docbeat.DeleteDocument(periodDoc, cursor)
+	err = docbeat.StoreDocument(dhoDoc, cursor, contract1Config)
 	assert.NilError(t, err)
-	assertDocNotExists(t, period1Id)
+	assertDoc(t, expectedDHODoc, contract1Config.IndexPrefix)
 	assertCursor(t, cursor)
 
 	cursor = "cursor6"
-	err = docbeat.DeleteDocument(memberDoc, cursor)
+	err = docbeat.DeleteDocument(dhoDoc, cursor, contract1Config)
 	assert.NilError(t, err)
-	assertDocNotExists(t, member1Id)
+	assertDocNotExists(t, dhoId, contract1Config.IndexPrefix)
+	assertCursor(t, cursor)
+
+	cursor = "cursor5"
+	err = docbeat.DeleteDocument(periodDoc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertDocNotExists(t, period1Id, contract1Config.IndexPrefix)
+	assertCursor(t, cursor)
+
+	cursor = "cursor6"
+	err = docbeat.DeleteDocument(memberDoc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertDocNotExists(t, member1Id, contract1Config.IndexPrefix)
+	assertCursor(t, cursor)
+
+	cursor = "cursor7"
+	err = docbeat.DeleteDocument(dhoDoc, cursor, contract2Config)
+	assert.NilError(t, err)
+	assertDocNotExists(t, dhoId, contract2Config.IndexPrefix)
+	assertCursor(t, cursor)
+
+	cursor = "cursor8"
+	err = docbeat.DeleteDocument(periodDoc, cursor, contract2Config)
+	assert.NilError(t, err)
+	assertDocNotExists(t, period1Id, contract2Config.IndexPrefix)
 	assertCursor(t, cursor)
 
 }
 
-func assertDoc(t *testing.T, doc map[string]interface{}) {
-	d, err := docbeat.GetDocument(doc["docId"].(string))
+func assertDoc(t *testing.T, doc map[string]interface{}, docIndexPrefix string) {
+	d, err := docbeat.GetDocument(doc["docId"].(string), docIndexPrefix)
 	assert.NilError(t, err)
 	assert.Equal(t, len(d), len(doc))
 	for k, v := range doc {
@@ -329,8 +378,8 @@ func assertDoc(t *testing.T, doc map[string]interface{}) {
 	}
 }
 
-func assertDocNotExists(t *testing.T, docId string) {
-	exists, err := docbeat.DocumentExists(docId)
+func assertDocNotExists(t *testing.T, docId, docIndexPrefix string) {
+	exists, err := docbeat.DocumentExists(docId, docIndexPrefix)
 	assert.NilError(t, err)
 	assert.Assert(t, !exists)
 }
