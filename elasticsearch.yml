@@ -1,0 +1,28 @@
+# Note that the syntax for user settings can change between major versions.
+# You might need to update these user settings before performing a major version upgrade.
+#
+# Slack integration for versions 7.0 and later must use the secure key store method.
+# For more information, see:
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/actions-slack.html#configuring-slack
+#
+# Slack integration example (for versions after 5.0 and before 7.0)
+# xpack.notification.slack:
+#   account:
+#     monitoring:
+#       url: https://hooks.slack.com/services/T0A6BLEEA/B0A6D1PRD/XYZ123
+#
+# Slack integration example (for versions before 5.0)
+# watcher.actions.slack.service:
+#   account:
+#     monitoring:
+#       url: https://hooks.slack.com/services/T0A6BLEEA/B0A6D1PRD/XYZ123
+#       message_defaults:
+#        from: Watcher
+#
+# HipChat and PagerDuty integration are also supported. To learn more, see the documentation.
+http:
+  cors:
+    enabled: true
+    allow-origin: "*"
+    allow-credentials: true
+    allow-headers: Authorization, Accept, Accept-Charset, Accept-Datetime, Accept-Encoding, Accept-Language, Access-Control-Allow-Credentials, Access-Control-Allow-Headers, Access-Control-Allow-Methods, Access-Control-Allow-Origin, Access-Control-Expose-Headers, Access-Control-Max-Age, Access-Control-Request-Method, Access-Control-Request-Headers, Cache-Control, Connection, Content-Encoding, Content-Length, Content-Type, Cookie, Date, Expect, Forwarded, From, Host, HTTP2-Settings, If-Match, If-Modified-Since, If-None-Match, If-Range, If-Unmodified-Since, Max-Forwards, Origin, Pragma, Prefer, Proxy-Authorization, Range, TE, Trailer, Transfer-Encoding, User-Agent, Upgrade, X-Requested-With
