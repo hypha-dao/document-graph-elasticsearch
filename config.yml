@@ -8,8 +8,17 @@ start-block: 151824876
 heart-beat-frequency: 100
 #dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
 cursor-index-prefix: testnet1
+add-ints-as-strings: false
 
 contracts:
 - name: tlaclocmant2
   doc-table-name: documents
   index-prefix: traceability
+
+single-text-search-field:
+  asset: none
+  checksum256: none
+  int64: none
+  name: include
+  time_point: none
+  string: include

@@ -215,15 +215,24 @@ func TestUpdateMappings(t *testing.T) {
 		}
 	}
 	`
+	// indexBody := `
+	// {
+	// 	"settings": {
+	// 		"analysis": {
+	// 			"analyzer": {
+	// 				"default": {
+	// 					"tokenizer": "standard"
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// `
 	indexBody := `
 	{
-		"settings": {
-			"analysis": {
-				"analyzer": {
-					"default": {
-						"tokenizer": "standard"
-					}
-				}
+		"mappings": {
+			"properties": {
+				"title":  { "type": "text"}
 			}
 		}
 	}

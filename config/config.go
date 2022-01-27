@@ -3,13 +3,34 @@ package config
 import (
 	"fmt"
 
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache/domain"
 	"github.com/spf13/viper"
+)
+
+type SingleTextSearchFieldOp string
+
+var (
+	SingleTextSearchFieldOp_None    SingleTextSearchFieldOp = "none"
+	SingleTextSearchFieldOp_Include SingleTextSearchFieldOp = "include"
+	SingleTextSearchFieldOp_Replace SingleTextSearchFieldOp = "replace"
+	CursorIndex                                             = "cursor"
+	DocumentIndex                                           = "documents"
 )
 
 type ContractConfig struct {
 	Name         string `mapstructure:"name"`
 	DocTableName string `mapstructure:"doc-table-name"`
 	IndexPrefix  string `mapstructure:"index-prefix"`
+	IndexName    string
+}
+
+func (m *ContractConfig) Init() error {
+
+	if err := m.Validate(); err != nil {
+		return err
+	}
+	m.IndexName = getIndexName(m.IndexPrefix, DocumentIndex)
+	return nil
 }
 
 func (m *ContractConfig) Validate() error {
@@ -35,11 +56,13 @@ func (m *ContractConfig) String() string {
 				Name: %v
 				DocTableName: %v
 				IndexPrefix: %v
+				IndexName: %v
 			}
 		`,
 		m.Name,
 		m.DocTableName,
 		m.IndexPrefix,
+		m.IndexName,
 	)
 }
 
@@ -55,19 +78,22 @@ func (m ContractsConfig) Get(contract string, table string) *ContractConfig {
 }
 
 type Config struct {
-	ContractsRaw       []*ContractConfig `mapstructure:"contracts"`
-	CursorIndexPrefix  string            `mapstructure:"cursor-index-prefix"`
-	FirehoseEndpoint   string            `mapstructure:"firehose-endpoint"`
-	DfuseApiKey        string            `mapstructure:"dfuse-api-key"`
-	EosEndpoint        string            `mapstructure:"eos-endpoint"`
-	ElasticEndpoint    string            `mapstructure:"elastic-endpoint"`
-	ElasticCA          string            `mapstructure:"elastic-ca"`
-	PrometheusPort     uint              `mapstructure:"prometheus-port"`
-	StartBlock         int64             `mapstructure:"start-block"`
-	HeartBeatFrequency uint              `mapstructure:"heart-beat-frequency"`
-	Contracts          ContractsConfig   `mapstructure:"should-not-map-this"`
-	ElasticUser        string
-	ElasticPassword    string
+	ContractsRaw          []*ContractConfig `mapstructure:"contracts"`
+	CursorIndexPrefix     string            `mapstructure:"cursor-index-prefix"`
+	FirehoseEndpoint      string            `mapstructure:"firehose-endpoint"`
+	DfuseApiKey           string            `mapstructure:"dfuse-api-key"`
+	EosEndpoint           string            `mapstructure:"eos-endpoint"`
+	ElasticEndpoint       string            `mapstructure:"elastic-endpoint"`
+	ElasticCA             string            `mapstructure:"elastic-ca"`
+	PrometheusPort        uint              `mapstructure:"prometheus-port"`
+	StartBlock            int64             `mapstructure:"start-block"`
+	HeartBeatFrequency    uint              `mapstructure:"heart-beat-frequency"`
+	Contracts             ContractsConfig   `mapstructure:"should-not-map-this"`
+	SingleTextSearchField map[string]string `mapstructure:"single-text-search-field"`
+	AddIntsAsStrings      bool              `mapstructure:"add-ints-as-strings"`
+	ElasticUser           string
+	ElasticPassword       string
+	CursorIndexName       string
 }
 
 // LoadConfig reads configuration from file or environment variables.
@@ -92,7 +118,28 @@ func LoadConfig(filePath string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = config.processSingleTextSearchField()
+	if err != nil {
+		return nil, err
+	}
+	config.CursorIndexName = getIndexName(config.CursorIndexPrefix, CursorIndex)
 	return &config, nil
+}
+
+func (m *Config) GetSingleTextSearchFieldOp(contentType string) SingleTextSearchFieldOp {
+	op, ok := m.SingleTextSearchField[contentType]
+	if !ok {
+		return SingleTextSearchFieldOp_None
+	}
+	return SingleTextSearchFieldOp(op)
+}
+
+func (m *Config) GetCursorIndexName() string {
+	return getIndexName(m.CursorIndexPrefix, CursorIndex)
+}
+
+func getIndexName(prefix, suffix string) string {
+	return fmt.Sprintf(`%v-%v`, prefix, suffix)
 }
 
 func parseContracts(raw []*ContractConfig) (ContractsConfig, error) {
@@ -101,7 +148,7 @@ func parseContracts(raw []*ContractConfig) (ContractsConfig, error) {
 	}
 	contractsConfig := make(ContractsConfig)
 	for _, cc := range raw {
-		if err := cc.Validate(); err != nil {
+		if err := cc.Init(); err != nil {
 			return nil, fmt.Errorf("failed parsing contracts, error: %v", err)
 		}
 		if _, ok := contractsConfig[cc.Name]; ok {
@@ -110,6 +157,27 @@ func parseContracts(raw []*ContractConfig) (ContractsConfig, error) {
 		contractsConfig[cc.Name] = cc
 	}
 	return contractsConfig, nil
+}
+
+func (m *Config) processSingleTextSearchField() error {
+	processed := make(map[string]string, len(m.SingleTextSearchField))
+	for k, v := range m.SingleTextSearchField {
+		if v != "none" && v != "include" && v != "replace" {
+			return fmt.Errorf("failed processing single-text-search-field configuration, invalid value for %v property, valid values are: [none, include, replace] found: %v", k, v)
+		}
+		if v != "none" {
+			if _, ok := domain.ContentTypeSuffixMap[k]; !ok {
+				return fmt.Errorf("failed processing single-text-search-field configuration, invalid single-text-search-field property: %v", k)
+			}
+			processed[k] = v
+		}
+	}
+	m.SingleTextSearchField = processed
+	return nil
+}
+
+func (m *Config) RequiresSingleTextSearchField() bool {
+	return len(m.SingleTextSearchField) > 0
 }
 
 func (m *Config) String() string {
@@ -128,6 +196,10 @@ func (m *Config) String() string {
 				HeartBeatFrequency: %v
 				ElasticUser: %v
 				ElasticPassword: %v
+				AddIntsAsStrings: %v
+				SingleTextSearchField: %v
+				CursorIndexName: %v
+
 			}
 		`,
 		m.ContractsRaw,
@@ -142,5 +214,8 @@ func (m *Config) String() string {
 		m.HeartBeatFrequency,
 		m.ElasticUser,
 		m.ElasticPassword,
+		m.AddIntsAsStrings,
+		m.SingleTextSearchField,
+		m.CursorIndexName,
 	)
 }
