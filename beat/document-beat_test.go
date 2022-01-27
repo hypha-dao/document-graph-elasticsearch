@@ -381,63 +381,63 @@ func TestOpCycle(t *testing.T) {
 
 }
 
-func TestSingleSearchTextFieldMappingsNotConfiguredForNoSingleTextField(t *testing.T) {
-	setup(t, getBaseConfig())
-	exists, err := docbeat.IndexExists(contract1Config.IndexName)
-	assert.NilError(t, err)
-	assert.Assert(t, !exists, "Index: %v should not exist", contract1Config.IndexName)
-}
+// func TestSingleSearchTextFieldMappingsNotConfiguredForNoSingleTextField(t *testing.T) {
+// 	setup(t, getBaseConfig())
+// 	exists, err := docbeat.IndexExists(contract1Config.IndexName)
+// 	assert.NilError(t, err)
+// 	assert.Assert(t, !exists, "Index: %v should not exist", contract1Config.IndexName)
+// }
 
-func TestSingleSearchTextFieldMappingsIsCreatedForSingleTextField(t *testing.T) {
-	cfg := getBaseConfig()
-	cfg.SingleTextSearchField = map[string]string{
-		domain.ContentType_String: string(config.SingleTextSearchFieldOp_Include),
-	}
-	t.Logf("Mappings should be created for initial setup")
-	setup(t, cfg)
-	assertSingleSearchTextFieldMappings(t, contract1Config.IndexName, true)
-	assertSingleSearchTextFieldMappings(t, contract2Config.IndexName, true)
+// func TestSingleSearchTextFieldMappingsIsCreatedForSingleTextField(t *testing.T) {
+// 	cfg := getBaseConfig()
+// 	cfg.SingleTextSearchField = map[string]string{
+// 		domain.ContentType_String: string(config.SingleTextSearchFieldOp_Include),
+// 	}
+// 	t.Logf("Mappings should be created for initial setup")
+// 	setup(t, cfg)
+// 	assertSingleSearchTextFieldMappings(t, contract1Config.IndexName, true)
+// 	assertSingleSearchTextFieldMappings(t, contract2Config.IndexName, true)
 
-	t.Logf("Mappings should be updated for already existant indexes")
-	_, err := beat.NewDocumentBeat(docbeat.ElasticSearch, cfg, nil)
-	assert.NilError(t, err)
-	assertSingleSearchTextFieldMappings(t, contract1Config.IndexName, true)
-	assertSingleSearchTextFieldMappings(t, contract2Config.IndexName, true)
-}
+// 	t.Logf("Mappings should be updated for already existant indexes")
+// 	_, err := beat.NewDocumentBeat(docbeat.ElasticSearch, cfg, nil)
+// 	assert.NilError(t, err)
+// 	assertSingleSearchTextFieldMappings(t, contract1Config.IndexName, true)
+// 	assertSingleSearchTextFieldMappings(t, contract2Config.IndexName, true)
+// }
 
-func TestExistantIndexesAreUpdatedWithSingleSearchTextFieldMappingsForSingleTextField(t *testing.T) {
-	cfg := getBaseConfig()
-	t.Logf("Mappings should be created for initial setup")
-	setup(t, cfg)
-	assertIndexExists(t, contract1Config.IndexName, false)
-	assertIndexExists(t, contract2Config.IndexName, false)
+// func TestExistantIndexesAreUpdatedWithSingleSearchTextFieldMappingsForSingleTextField(t *testing.T) {
+// 	cfg := getBaseConfig()
+// 	t.Logf("Mappings should be created for initial setup")
+// 	setup(t, cfg)
+// 	assertIndexExists(t, contract1Config.IndexName, false)
+// 	assertIndexExists(t, contract2Config.IndexName, false)
 
-	period1Id := "21"
-	period1IdI, _ := strconv.ParseUint(period1Id, 10, 64)
-	periodDoc := getPeriodDoc(period1IdI, 1)
-	expectedPeriodDoc := getPeriodValues(period1IdI, 1)
-	cursor := "cursor0"
+// 	period1Id := "21"
+// 	period1IdI, _ := strconv.ParseUint(period1Id, 10, 64)
+// 	periodDoc := getPeriodDoc(period1IdI, 1)
+// 	expectedPeriodDoc := getPeriodValues(period1IdI, 1)
+// 	cursor := "cursor0"
 
-	t.Logf("Storing period 1 document in contract1 index to create index")
-	err := docbeat.StoreDocument(periodDoc, cursor, contract1Config)
-	assert.NilError(t, err)
-	assertStoredDoc(t, expectedPeriodDoc, contract1Config.IndexName)
-	assertCursor(t, cursor)
-	assertIndexExists(t, contract1Config.IndexName, true)
-	assertIndexExists(t, contract2Config.IndexName, false)
-	assertSingleSearchTextFieldMappings(t, contract1Config.IndexName, false)
+// 	t.Logf("Storing period 1 document in contract1 index to create index")
+// 	err := docbeat.StoreDocument(periodDoc, cursor, contract1Config)
+// 	assert.NilError(t, err)
+// 	assertStoredDoc(t, expectedPeriodDoc, contract1Config.IndexName)
+// 	assertCursor(t, cursor)
+// 	assertIndexExists(t, contract1Config.IndexName, true)
+// 	assertIndexExists(t, contract2Config.IndexName, false)
+// 	assertSingleSearchTextFieldMappings(t, contract1Config.IndexName, false)
 
-	cfg.SingleTextSearchField = map[string]string{
-		domain.ContentType_String: string(config.SingleTextSearchFieldOp_Include),
-	}
-	t.Logf("Mappings should be updated for already existant indexes and created for non existant")
-	_, err = beat.NewDocumentBeat(docbeat.ElasticSearch, cfg, nil)
-	assert.NilError(t, err)
-	assertIndexExists(t, contract1Config.IndexName, true)
-	assertIndexExists(t, contract2Config.IndexName, true)
-	assertSingleSearchTextFieldMappings(t, contract1Config.IndexName, true)
-	assertSingleSearchTextFieldMappings(t, contract2Config.IndexName, true)
-}
+// 	cfg.SingleTextSearchField = map[string]string{
+// 		domain.ContentType_String: string(config.SingleTextSearchFieldOp_Include),
+// 	}
+// 	t.Logf("Mappings should be updated for already existant indexes and created for non existant")
+// 	_, err = beat.NewDocumentBeat(docbeat.ElasticSearch, cfg, nil)
+// 	assert.NilError(t, err)
+// 	assertIndexExists(t, contract1Config.IndexName, true)
+// 	assertIndexExists(t, contract2Config.IndexName, true)
+// 	assertSingleSearchTextFieldMappings(t, contract1Config.IndexName, true)
+// 	assertSingleSearchTextFieldMappings(t, contract2Config.IndexName, true)
+// }
 
 func TestToParsedDoc(t *testing.T) {
 

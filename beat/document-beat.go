@@ -64,10 +64,10 @@ func NewDocumentBeat(elasticSearch *service.ElasticSearch, config *config.Config
 	}
 	docbeat.Cursor = cursor
 
-	err = docbeat.configureIndexes()
-	if err != nil {
-		return nil, fmt.Errorf("failed configuring indexes, error: %v", err)
-	}
+	// err = docbeat.configureIndexes()
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed configuring indexes, error: %v", err)
+	// }
 	return docbeat, nil
 }
 
