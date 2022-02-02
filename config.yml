@@ -19,6 +19,6 @@ single-text-search-field:
   asset: none
   checksum256: none
   int64: none
-  name: include
+  name: none
   time_point: none
-  string: include
+  string: none

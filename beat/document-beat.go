@@ -29,6 +29,12 @@ var (
 			"mappings": %v	
 		}
 	`, SingleTextSearchFieldMappings)
+
+	BaseIndex = `
+		{
+			"mappings": {}
+		}
+	`
 )
 
 var log *slog.Log
@@ -64,10 +70,10 @@ func NewDocumentBeat(elasticSearch *service.ElasticSearch, config *config.Config
 	}
 	docbeat.Cursor = cursor
 
-	// err = docbeat.configureIndexes()
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed configuring indexes, error: %v", err)
-	// }
+	err = docbeat.configureIndexes()
+	if err != nil {
+		return nil, fmt.Errorf("failed configuring indexes, error: %v", err)
+	}
 	return docbeat, nil
 }
 
@@ -134,33 +140,53 @@ func (m *DocumentBeat) CursorExists() (bool, error) {
 
 func (m *DocumentBeat) configureIndexes() error {
 
-	if !m.Config.RequiresSingleTextSearchField() {
-		log.Infof("No single text field required, not configuring indexes")
-		return nil
-	}
-	log.Infof("Single text field required, configuring indexes...")
+	log.Infof("Configuring indexes...")
 	for _, contract := range m.Config.Contracts {
 		index := contract.IndexName
 		exists, err := m.IndexExists(index)
 		if err != nil {
 			return err
 		}
-		if exists {
-			log.Infof("Index: %v exists, updating single search text field mappings...", index)
-			_, err = m.ElasticSearch.UpdateMappings(index, SingleTextSearchFieldMappings)
+		if !exists {
+			log.Infof("Index: %v not exists, creating base index...", index)
+			_, err = m.ElasticSearch.UpsertIndex(index, BaseIndex)
 			if err != nil {
-				return fmt.Errorf("failed updating mappings: %v for index: %v exists, error: %v", SingleTextSearchFieldMappings, index, err)
-			}
-		} else {
-			log.Infof("Index: %v not exists, creating index with single search text field mappings...", index)
-			_, err = m.ElasticSearch.UpsertIndex(index, SingleTextSearchFieldIndexConfig)
-			if err != nil {
-				return fmt.Errorf("failed creating index: %v for index: %v exists, error: %v", SingleTextSearchFieldIndexConfig, index, err)
+				return fmt.Errorf("failed creating index: %v for index: %v exists, error: %v", BaseIndex, index, err)
 			}
 		}
 	}
 	return nil
 }
+
+// func (m *DocumentBeat) configureIndexes() error {
+
+// 	if !m.Config.RequiresSingleTextSearchField() {
+// 		log.Infof("No single text field required, not configuring indexes")
+// 		return nil
+// 	}
+// 	log.Infof("Single text field required, configuring indexes...")
+// 	for _, contract := range m.Config.Contracts {
+// 		index := contract.IndexName
+// 		exists, err := m.IndexExists(index)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		if exists {
+// 			log.Infof("Index: %v exists, updating single search text field mappings...", index)
+// 			_, err = m.ElasticSearch.UpdateMappings(index, SingleTextSearchFieldMappings)
+// 			if err != nil {
+// 				return fmt.Errorf("failed updating mappings: %v for index: %v exists, error: %v", SingleTextSearchFieldMappings, index, err)
+// 			}
+// 		} else {
+// 			log.Infof("Index: %v not exists, creating index with single search text field mappings...", index)
+// 			_, err = m.ElasticSearch.UpsertIndex(index, SingleTextSearchFieldIndexConfig)
+// 			if err != nil {
+// 				return fmt.Errorf("failed creating index: %v for index: %v exists, error: %v", SingleTextSearchFieldIndexConfig, index, err)
+// 			}
+// 		}
+// 	}
+// 	return nil
+// }
 
 func (m *DocumentBeat) GetDocument(docId, docIndex string) (map[string]interface{}, error) {
 

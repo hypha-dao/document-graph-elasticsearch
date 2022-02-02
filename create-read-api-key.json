@@ -1,0 +1,37 @@
+POST /_security/api_key
+{
+  "name": "read-api-key",
+  "role_descriptors": { 
+    "role-read": {
+      "cluster": ["all"],
+      "index": [
+        {
+          "names": ["*"],
+          "privileges": ["read"]
+        }
+      ]
+    }
+  }
+}
+
+{
+  "id" : "U873eH4BXnYQCa5UiCOh",
+  "name" : "read-api-key",
+  "api_key" : "2etSN_sHQ7icvVAvzcBDCw",
+  "encoded" : "VTg3M2VINEJYbllRQ2E1VWlDT2g6MmV0U05fc0hRN2ljdlZBdnpjQkRDdw=="
+}
+
+{
+  "id" : "Bz_8eH4BeP5qTBalgo5t",
+  "name" : "read-api-key",
+  "api_key" : "QVF7cCn3TWaBCcvGY2Nf-Q",
+  "encoded" : "QnpfOGVINEJlUDVxVEJhbGdvNXQ6UVZGN2NDbjNUV2FCQ2N2R1kyTmYtUQ=="
+}
+
+
+{
+  "id" : "dM2mt34BJQhGhaWPKsnS",
+  "name" : "read-api-key",
+  "api_key" : "YbqPrz6fTUeVV5A31F7rsA",
+  "encoded" : "ZE0ybXQzNEJKUWhHaGFXUEtzblM6WWJxUHJ6NmZUVWVWVjVBMzFGN3JzQQ=="
+}

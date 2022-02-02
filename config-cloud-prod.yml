@@ -1,18 +1,18 @@
 #firehose-endpoint: localhost:9000
-firehose-endpoint: fh.tekit.io:443
-eos-endpoint: https://testnet.telos.caleos.io
+firehose-endpoint: fhtm.tekit.io:443
+eos-endpoint: https://telos.caleos.io
 elastic-endpoint: https://hypha.es.eu-west-1.aws.found.io:9243 #username and password should be set using env vars ES_USER, ES_PASSWORD
 elastic-ca: 
 prometheus-port: 2114
-start-block: 151824876
+start-block: 197679318
 heart-beat-frequency: 100
 #dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
-cursor-index-prefix: testnet1
+cursor-index-prefix: dg
 
 contracts:
-- name: tlaclocmant2
+- name: dg.sh
   doc-table-name: documents
-  index-prefix: traceability
+  index-prefix: dg
 
 single-text-search-field:
   asset: none
