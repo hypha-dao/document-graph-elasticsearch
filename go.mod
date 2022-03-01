@@ -9,8 +9,8 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.16.0
 	github.com/prometheus/client_golang v1.2.1
 	github.com/rs/zerolog v1.20.0
-	github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20211031201606-2a159797d7a0
-	github.com/sebastianmontero/hypha-document-cache-gql-go v0.0.0-20220111210121-3b55baa2d5c3
+	github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220225142541-74ad0609fc2f
+	github.com/sebastianmontero/hypha-document-cache-gql-go v0.0.0-20220225204139-31fede05e7b7
 	github.com/sebastianmontero/slog-go v0.0.0-20210213204103-60eda76e8d74
 	github.com/spf13/viper v1.8.0
 	gotest.tools v2.2.0+incompatible

@@ -725,10 +725,14 @@ github.com/ryanuber/columnize v0.0.0-20170703205827-abc90934186a/go.mod h1:sm1tb
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20211031201606-2a159797d7a0 h1:bNOAWt90KA+s3/614UlleOg6oShj7nUluZnwZkyYYs0=
 github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20211031201606-2a159797d7a0/go.mod h1:5KkulgbSFOF8PuFo8wHEvo9eUzioTyJpWJsF6HEpKn8=
+github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220225142541-74ad0609fc2f h1:YwCANvbgj0aP6eweFRe+48LL1nS4H46NchmIqo6uphM=
+github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220225142541-74ad0609fc2f/go.mod h1:5KkulgbSFOF8PuFo8wHEvo9eUzioTyJpWJsF6HEpKn8=
 github.com/sebastianmontero/dgraph-go-client v0.0.0-20210213215931-344d1e456654 h1:VXSzZY1sZ0QLPvnnlgWC3tlprwAfyIrcThbN5dovNJI=
 github.com/sebastianmontero/dgraph-go-client v0.0.0-20210213215931-344d1e456654/go.mod h1:az53NkMof6OHCQWY7RncRAhuTQrONhoJIORx4OktGU0=
 github.com/sebastianmontero/hypha-document-cache-gql-go v0.0.0-20220111210121-3b55baa2d5c3 h1:f7KCeXyqIYoemMI1R0Kywq8sAwSC8dQ318COkc9UnTU=
 github.com/sebastianmontero/hypha-document-cache-gql-go v0.0.0-20220111210121-3b55baa2d5c3/go.mod h1:C2rlcl7FEM0eLtyBokQMZvTGFJROoz5d6W78LPbC/zk=
+github.com/sebastianmontero/hypha-document-cache-gql-go v0.0.0-20220225204139-31fede05e7b7 h1:HFrEAmatYTTiY+6QC8Z+e2ijdTsq4kabEMkCfQRLMck=
+github.com/sebastianmontero/hypha-document-cache-gql-go v0.0.0-20220225204139-31fede05e7b7/go.mod h1:01ugxADUZUIFF9hlvBKncC2Xyg5h6EGAoSyR2hAmdy8=
 github.com/sebastianmontero/slog-go v0.0.0-20210213204103-60eda76e8d74 h1:eNvvwYAh/JZX6pjCTjBqjxfZBuUtZnNjWkr0ew471x0=
 github.com/sebastianmontero/slog-go v0.0.0-20210213204103-60eda76e8d74/go.mod h1:OKZ+YJ89kDlx6URd2SlZqfJDl7ULsHVysV9iZErXtsI=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=

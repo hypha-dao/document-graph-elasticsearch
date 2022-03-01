@@ -256,9 +256,9 @@ func (m *DocumentBeat) ToParsedDoc(doc *domain.ChainDocument) (map[string]interf
 		"contract": doc.Contract,
 	}
 
-	singleTextFieldOp := m.Config.GetSingleTextSearchFieldOp(domain.ContentType_Int64)
-	m.processField(doc.ID, "docId_i", values, &singleTextField, singleTextFieldOp)
-	singleTextFieldOp = m.Config.GetSingleTextSearchFieldOp(domain.ContentType_Name)
+	// singleTextFieldOp := m.Config.GetSingleTextSearchFieldOp(domain.ContentType_Int64)
+	// m.processField(doc.ID, "docId_i", values, &singleTextField, singleTextFieldOp)
+	singleTextFieldOp := m.Config.GetSingleTextSearchFieldOp(domain.ContentType_Name)
 	m.processField(doc.Creator, "creator", values, &singleTextField, singleTextFieldOp)
 	singleTextFieldOp = m.Config.GetSingleTextSearchFieldOp(domain.ContentType_Time)
 	m.processField(domain.FormatDateTime(doc.CreatedDate), "createdDate", values, &singleTextField, singleTextFieldOp)
