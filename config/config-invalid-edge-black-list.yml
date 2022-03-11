@@ -8,6 +8,7 @@ start-block: 149760151
 heart-beat-frequency: 100
 #dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
 cursor-index-prefix: testnet1
+add-ints-as-strings: true
 
 contracts:
 - name: contract1
@@ -18,11 +19,22 @@ contracts:
   doc-table-name: docs
   edge-table-name: edgs
   index-prefix: index2
+  edge-black-list:
+  - from: "*"
+    to: "Vote"
+    name: "*"
+  - from: "Role"
+    name: "*"
+  - from: "Payout"
+    to: "Member"
+    name: "payed"
 
 single-text-search-field:
   asset: replace
-  checksum256: invalid
+  checksum256: none
   int64: include
   name: none
   time_point: none
   string: none
+
+

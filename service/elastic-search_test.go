@@ -78,7 +78,7 @@ func TestOpCycle(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Assert(t, exists)
 
-	res, err := elasticSearch.Get(index, doc1Id)
+	res, err := elasticSearch.Get(index, doc1Id, nil)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, doc1, res)
 
@@ -89,7 +89,50 @@ func TestOpCycle(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Assert(t, exists)
 
-	res, err = elasticSearch.Get(index, doc2Id)
+	res, err = elasticSearch.Get(index, doc2Id, nil)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, doc2, res)
+
+	edgeName := "edge"
+	edgeProp := []interface{}{"1"}
+	doc2Update := map[string]interface{}{
+		edgeName: edgeProp,
+	}
+
+	_, err = elasticSearch.Update(index, doc2Id, doc2Update, false)
+	assert.NilError(t, err)
+
+	doc2[edgeName] = edgeProp
+
+	res, err = elasticSearch.Get(index, doc2Id, nil)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, doc2, res)
+
+	edgeProp = []interface{}{"1", "3"}
+	doc2Update = map[string]interface{}{
+		edgeName: edgeProp,
+	}
+
+	_, err = elasticSearch.Update(index, doc2Id, doc2Update, false)
+	assert.NilError(t, err)
+
+	doc2[edgeName] = edgeProp
+
+	res, err = elasticSearch.Get(index, doc2Id, nil)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, doc2, res)
+
+	edgeProp = []interface{}{}
+	doc2Update = map[string]interface{}{
+		edgeName: edgeProp,
+	}
+
+	_, err = elasticSearch.Update(index, doc2Id, doc2Update, false)
+	assert.NilError(t, err)
+
+	doc2[edgeName] = edgeProp
+
+	res, err = elasticSearch.Get(index, doc2Id, nil)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, doc2, res)
 
@@ -106,6 +149,51 @@ func TestOpCycle(t *testing.T) {
 	exists, err = elasticSearch.DocumentExists(index, doc1Id)
 	assert.NilError(t, err)
 	assert.Assert(t, !exists)
+}
+
+func TestGetSelectingFields(t *testing.T) {
+
+	index := "prueba"
+	doc1Id := "1"
+	doc1 := map[string]interface{}{
+		"id":     doc1Id,
+		"str":    "This is a string for doc 2",
+		"number": float64(30.45),
+	}
+
+	exists, err := elasticSearch.IndexExists(index)
+	assert.NilError(t, err)
+	if exists {
+		_, err := elasticSearch.DeleteIndex(index)
+		assert.NilError(t, err)
+	}
+
+	exists, err = elasticSearch.DocumentExists(index, doc1Id)
+	assert.NilError(t, err)
+	assert.Assert(t, !exists)
+
+	_, err = elasticSearch.Upsert(index, doc1Id, doc1)
+	assert.NilError(t, err)
+
+	exists, err = elasticSearch.DocumentExists(index, doc1Id)
+	assert.NilError(t, err)
+	assert.Assert(t, exists)
+
+	res, err := elasticSearch.Get(index, doc1Id, nil)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, doc1, res)
+
+	pDoc1 := map[string]interface{}{
+		"id": doc1Id,
+	}
+	res, err = elasticSearch.Get(index, doc1Id, []string{"id"})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, pDoc1, res)
+
+	pDoc1["str"] = doc1["str"]
+	res, err = elasticSearch.Get(index, doc1Id, []string{"id", "str"})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, pDoc1, res)
 }
 
 func TestDeleteDocument(t *testing.T) {

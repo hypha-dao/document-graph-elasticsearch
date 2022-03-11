@@ -15,6 +15,8 @@ var (
 	CursorId                      = "c1"
 	CursorProperty                = "cursor"
 	DocumentIndex                 = "documents"
+	FieldsPropertyName            = "fields"
+	EdgesPropertyName             = "edges"
 	SingleTextSearchFieldName     = "single_text_search_field"
 	SingleTextSearchFieldMappings = fmt.Sprintf(` {
 			"properties": {
@@ -83,10 +85,84 @@ func (m *DocumentBeat) StoreDocument(chainDoc *domain.ChainDocument, cursor stri
 	if err != nil {
 		return fmt.Errorf("failed storing document: %v, cursor: %v, contract config: %v, error: %v", chainDoc, cursor, contractConfig, err)
 	}
+	edges, err := m.GetDocument(chainDoc.GetDocId(), contractConfig.IndexName, []string{EdgesPropertyName})
+	if err != nil {
+		return fmt.Errorf("failed getting edges for document: %v, cursor: %v, contract config: %v, error: %v", chainDoc.GetDocId(), cursor, contractConfig, err)
+	}
+	if edges != nil {
+		if e, ok := edges[EdgesPropertyName]; ok {
+			doc[EdgesPropertyName] = e
+		}
+	}
 	log.Infof("Storing parsed document: %v, cursor: %v", doc, cursor)
 	_, err = m.ElasticSearch.Upsert(contractConfig.IndexName, doc["docId"].(string), doc)
 	if err != nil {
 		return fmt.Errorf("failed storing document: %v, cursor: %v, contract config: %v, error: %v", doc, cursor, contractConfig, err)
+	}
+	return m.UpdateCursor(cursor)
+}
+
+func (m *DocumentBeat) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor string, contractConfig *config.ContractConfig) error {
+	log.Infof("Mutating chain edge: %v, delete Op: %v, cursor: %v, contract config: %v", chainEdge, deleteOp, cursor, contractConfig)
+	edgeName := chainEdge.DocEdgeName
+	toFields := []string{"docId", "type"}
+	fromFields := append(toFields, fmt.Sprintf("%v.%v", EdgesPropertyName, edgeName))
+	docFrom, err := m.GetDocument(chainEdge.From, contractConfig.IndexName, fromFields)
+	if err != nil {
+		return fmt.Errorf("failed getting document: %v, cursor: %v, contract config: %v, error: %v", chainEdge.From, cursor, contractConfig, err)
+	}
+	if docFrom != nil {
+		log.Infof("Found FROM document: %v", docFrom)
+		docTo, err := m.GetDocument(chainEdge.To, contractConfig.IndexName, toFields)
+		if err != nil {
+			return fmt.Errorf("failed getting document: %v, cursor: %v, contract config: %v, error: %v", chainEdge.To, cursor, contractConfig, err)
+		}
+		if docTo != nil {
+			log.Infof("Found TO document: %v", docTo)
+			if !contractConfig.EdgeBlackList.IsBlackListed(docFrom["type"].(string), docTo["type"].(string), edgeName) {
+				log.Infof("Edge: %v, not black listed, mutating, deleteOp: %v", chainEdge, deleteOp)
+				edge := []interface{}{}
+				if edges, ok := docFrom[EdgesPropertyName].(map[string]interface{}); ok {
+					if e, ok := edges[edgeName].([]interface{}); ok {
+						edge = e
+					}
+				}
+				childId := docTo["docId"].(string)
+				pos := find(childId, edge)
+				wasUpdated := false
+				if pos == -1 && !deleteOp {
+					log.Infof("Adding docId: %v, to edge: %v for document: %v", childId, edgeName, chainEdge.From)
+					edge = append(edge, childId)
+					wasUpdated = true
+				} else if pos >= 0 && deleteOp {
+					log.Infof("Deleting docId: %v, from edge: %v for document: %v", childId, edgeName, chainEdge.From)
+					edge = append(edge[0:pos], edge[pos+1:]...)
+					wasUpdated = true
+				}
+				if wasUpdated {
+					update := map[string]interface{}{
+						EdgesPropertyName: map[string]interface{}{
+							edgeName: edge,
+						},
+					}
+					log.Infof("Updating document with updated edge: %v, update: %v, cursor: %v", edgeName, update, cursor)
+					_, err = m.ElasticSearch.Update(contractConfig.IndexName, docFrom["docId"].(string), update, false)
+					if err != nil {
+						return fmt.Errorf("failed updating document with updated edge: %v, edge values: %v, cursor: %v, contract config: %v, error: %v", edgeName, edge, cursor, contractConfig, err)
+					}
+				} else {
+					log.Warnf("Edge: %v, didn't cause an update, skipping", chainEdge)
+				}
+
+			} else {
+				log.Infof("Edge: %v, black listed, skipping", chainEdge)
+			}
+
+		} else {
+			log.Warnf("Processing edge, To Document: %v not found, cursor: %v, contract config: %v", chainEdge.To, cursor, contractConfig)
+		}
+	} else {
+		log.Warnf("Processing edge, From Document: %v not found, cursor: %v, contract config: %v", chainEdge.From, cursor, contractConfig)
 	}
 	return m.UpdateCursor(cursor)
 }
@@ -121,7 +197,7 @@ func (m *DocumentBeat) GetCursor() (string, error) {
 		return "", nil
 	}
 	log.Infof("Getting current cursor")
-	doc, err := m.ElasticSearch.Get(m.Config.CursorIndexName, CursorId)
+	doc, err := m.ElasticSearch.Get(m.Config.CursorIndexName, CursorId, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed getting cursor, index: %v, id: %v, error: %v", m.Config.CursorIndexName, CursorId, err)
 	}
@@ -188,7 +264,7 @@ func (m *DocumentBeat) configureIndexes() error {
 // 	return nil
 // }
 
-func (m *DocumentBeat) GetDocument(docId, docIndex string) (map[string]interface{}, error) {
+func (m *DocumentBeat) GetDocument(docId, docIndex string, fields []string) (map[string]interface{}, error) {
 
 	exists, err := m.DocumentExists(docId, docIndex)
 	if err != nil {
@@ -199,7 +275,7 @@ func (m *DocumentBeat) GetDocument(docId, docIndex string) (map[string]interface
 		return nil, nil
 	}
 	log.Infof("Getting document: %v, index: %v", docId, docIndex)
-	doc, err := m.ElasticSearch.Get(docIndex, docId)
+	doc, err := m.ElasticSearch.Get(docIndex, docId, fields)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting document, index: %v, id: %v, error: %v", docIndex, docId, err)
 	}
@@ -300,4 +376,13 @@ func (m *DocumentBeat) processField(value interface{}, name string, values map[s
 		values[name] = value
 	}
 	singleTextField.AddValue(value, op)
+}
+
+func find(needle string, hay []interface{}) int {
+	for i, v := range hay {
+		if needle == v.(string) {
+			return i
+		}
+	}
+	return -1
 }

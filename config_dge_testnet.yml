@@ -2,27 +2,27 @@
 firehose-endpoint: fh.tekit.io:443
 eos-endpoint: https://testnet.telos.caleos.io
 elastic-endpoint: https://localhost:9200 #username and password should be set using env vars ES_USER, ES_PASSWORD
-elastic-ca: certificates/ca/ca.crt
+elastic-ca: /home/sebastian/vsc-workspace/elastic-helm-charts/elasticsearch/examples/security/elastic-certificate.pem
 prometheus-port: 2114
-start-block: 149760151
+start-block: 151824876
 heart-beat-frequency: 100
 #dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
 cursor-index-prefix: testnet1
+add-ints-as-strings: false
 
 contracts:
-- name: contract1
+- name: tlaclocmant2
   doc-table-name: documents
   edge-table-name: edges
-  index-prefix: index1
-- name: contract2
-  doc-table-name: docs
-  edge-table-name: edgs
-  index-prefix: index2
-
+  index-prefix: traceability
+    
 single-text-search-field:
-  asset: replace
-  checksum256: invalid
-  int64: include
+  asset: none
+  checksum256: none
+  int64: none
   name: none
   time_point: none
   string: none
+
+
+  

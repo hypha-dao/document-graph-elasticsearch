@@ -62,7 +62,7 @@ func (m *ElasticSearch) Upsert(index, documentId string, doc interface{}) (map[s
 	}
 	defer res.Body.Close()
 	if res.IsError() {
-		return nil, fmt.Errorf("failed indexing document: %s in index: %v, status: %v", marshalledDoc, index, res.Status())
+		return nil, fmt.Errorf("failed upserting document: %s in index: %v, status: %v", marshalledDoc, index, res.Status())
 	}
 	// Deserialize the response into a map.
 	var r map[string]interface{}
@@ -73,11 +73,48 @@ func (m *ElasticSearch) Upsert(index, documentId string, doc interface{}) (map[s
 	return r, nil
 }
 
-func (m *ElasticSearch) Get(index, documentId string) (map[string]interface{}, error) {
+func (m *ElasticSearch) Update(index, documentId string, update interface{}, upsert bool) (map[string]interface{}, error) {
+	opType := "doc"
+	if upsert {
+		opType = "doc_as_upsert"
+	}
 
-	req := esapi.GetRequest{
+	doc := map[string]interface{}{
+		opType: update,
+	}
+	marshalledDoc, err := json.Marshal(doc)
+	if err != nil {
+		return nil, fmt.Errorf("failed marshalling document: %v to json for index: %v, error: %v", doc, index, err)
+	}
+	req := esapi.UpdateRequest{
 		Index:      index,
 		DocumentID: documentId,
+		Body:       strings.NewReader(string(marshalledDoc)),
+		Refresh:    "true",
+	}
+	res, err := req.Do(context.Background(), m.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed updating document: %s in index: %v, error: %v", marshalledDoc, index, err)
+	}
+	defer res.Body.Close()
+	if res.IsError() {
+		return nil, fmt.Errorf("failed updating document: %s in index: %v, status: %v", marshalledDoc, index, res.Status())
+	}
+	// Deserialize the response into a map.
+	var r map[string]interface{}
+	err = json.NewDecoder(res.Body).Decode(&r)
+	if err != nil {
+		return nil, fmt.Errorf("failed parsing the response body from updating, index: %v, document: %v, error: %v", index, marshalledDoc, err)
+	}
+	return r, nil
+}
+
+func (m *ElasticSearch) Get(index, documentId string, fields []string) (map[string]interface{}, error) {
+
+	req := esapi.GetRequest{
+		Index:          index,
+		DocumentID:     documentId,
+		SourceIncludes: fields,
 	}
 	res, err := req.Do(context.Background(), m.Client)
 	if err != nil {

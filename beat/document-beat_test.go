@@ -37,15 +37,34 @@ func beforeAll() {
 
 func getBaseConfig() *config.Config {
 	contract1Config = &config.ContractConfig{
-		Name:         "contract1",
-		DocTableName: "documents",
-		IndexPrefix:  "test1",
+		Name:          "contract1",
+		DocTableName:  "documents",
+		EdgeTableName: "edges",
+		IndexPrefix:   "test1",
+		EdgeBlackList: config.EdgeBlackList{
+			{
+				From: "*",
+				To:   "Vote",
+				Name: "*",
+			},
+			{
+				From: "Role",
+				To:   "Dao",
+				Name: "*",
+			},
+			{
+				From: "Dho",
+				To:   "DaoUser",
+				Name: "memberOf",
+			},
+		},
 	}
 	contract1Config.Init()
 	contract2Config = &config.ContractConfig{
-		Name:         "contract2",
-		DocTableName: "documents",
-		IndexPrefix:  "test2",
+		Name:          "contract2",
+		DocTableName:  "documents",
+		EdgeTableName: "edges",
+		IndexPrefix:   "test2",
 	}
 	contract2Config.Init()
 	contractsConfig = config.ContractsConfig{
@@ -222,7 +241,6 @@ func TestOpCycle(t *testing.T) {
 
 	expectedDHODoc := map[string]interface{}{
 		"docId":                          dhoId,
-		"docId_i":                        dhoIdI,
 		"createdDate":                    "2020-11-12T18:27:47.000Z",
 		"updatedDate":                    "2020-11-12T19:27:47.000Z",
 		"creator":                        "dao.hypha",
@@ -253,16 +271,47 @@ func TestOpCycle(t *testing.T) {
 	assertStoredDoc(t, expectedDHODoc, contract2Config.IndexName)
 	assertCursor(t, cursor)
 
+	t.Log("Adding period edge")
+	cursor = "cursor4_1"
+	err = docbeat.MutateEdge(domain.NewChainEdge("start.period", dhoId, period1Id), false, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	expectedDHODoc["edges"] = map[string]interface{}{
+		"startPeriod": []interface{}{period1Id},
+	}
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
 	t.Logf("Storing member document")
 	member1Id := "31"
 	member1IdI, _ := strconv.ParseUint(member1Id, 10, 64)
-	memberDoc := getMemberDoc(member1IdI, "member1")
-	expectedMemberDoc := getMemberValues(member1IdI, "member1")
+	member1Doc := getMemberDoc(member1IdI, "member1")
+	expectedMember1Doc := getMemberValues(member1IdI, "member1")
 	cursor = "cursor4"
 
-	err = docbeat.StoreDocument(memberDoc, cursor, contract1Config)
+	err = docbeat.StoreDocument(member1Doc, cursor, contract1Config)
 	assert.NilError(t, err)
-	assertStoredDoc(t, expectedMemberDoc, contract1Config.IndexName)
+	assertStoredDoc(t, expectedMember1Doc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing vote document")
+	vote1Id := "81"
+	vote1IdI, _ := strconv.ParseUint(vote1Id, 10, 64)
+	vote1Doc := getVoteDoc(vote1IdI, "vote1")
+	expectedvote1Doc := getVoteValues(vote1IdI, "vote1")
+	cursor = "cursor4_1"
+
+	err = docbeat.StoreDocument(vote1Doc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertStoredDoc(t, expectedvote1Doc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Should skip edge for blacklisted Vote edge")
+	cursor = "cursor5_10"
+	err = docbeat.MutateEdge(domain.NewChainEdge("votes", dhoId, vote1Id), false, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
 	assertCursor(t, cursor)
 
 	t.Logf("Updating dho document")
@@ -331,7 +380,6 @@ func TestOpCycle(t *testing.T) {
 
 	expectedDHODoc = map[string]interface{}{
 		"docId":                         dhoId,
-		"docId_i":                       dhoIdI,
 		"createdDate":                   "2020-11-12T18:37:47.000Z",
 		"updatedDate":                   "2020-11-12T19:47:47.000Z",
 		"creator":                       "dao.hypha1",
@@ -342,6 +390,9 @@ func TestOpCycle(t *testing.T) {
 		"details_timeShareX100_i_s":     "80",
 		"details_strToInt_s":            "70",
 		"system_originalApprovedDate_t": "2021-04-12T05:09:36.5Z",
+		"edges": map[string]interface{}{
+			"startPeriod": []interface{}{period1Id},
+		},
 	}
 	cursor = "cursor5"
 	err = docbeat.StoreDocument(dhoDoc, cursor, contract1Config)
@@ -349,31 +400,223 @@ func TestOpCycle(t *testing.T) {
 	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
 	assertCursor(t, cursor)
 
+	t.Log("Adding member edge")
+	cursor = "cursor5_1"
+	err = docbeat.MutateEdge(domain.NewChainEdge("member", dhoId, member1Id), false, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	expectedDHODoc["edges"].(map[string]interface{})["member"] = []interface{}{member1Id}
+
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing dao user document")
+	daoUser1Id := "81"
+	daoUser1IdI, _ := strconv.ParseUint(daoUser1Id, 10, 64)
+	daoUser1Doc := getDaoUserDoc(daoUser1IdI, "daoUser1")
+	expecteddaoUser1Doc := getDaoUserValues(daoUser1IdI, "daoUser1")
+	cursor = "cursor4_5"
+
+	err = docbeat.StoreDocument(daoUser1Doc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertStoredDoc(t, expecteddaoUser1Doc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Should skip edge for blacklisted memberof Dao User edge")
+	cursor = "cursor5_10"
+	err = docbeat.MutateEdge(domain.NewChainEdge("member.of", dhoId, daoUser1Id), false, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Logf("Updating dho document 2")
+	dhoDoc = &domain.ChainDocument{
+		ID:          dhoIdI,
+		CreatedDate: "2020-11-12T18:37:47.000",
+		UpdatedDate: "2020-11-12T19:48:47.000",
+		Creator:     "dao.hypha1",
+		Contract:    "contract2",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.hypha2",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "time_share_x100",
+					Value: []interface{}{
+						"int64",
+						"82",
+					},
+				},
+				{
+					Label: "str_to_int",
+					Value: []interface{}{
+						"string",
+						"70",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"dho",
+					},
+				},
+				{
+					Label: "original_approved_date",
+					Value: []interface{}{
+						"time_point",
+						"2021-04-12T05:09:36.5",
+					},
+				},
+			},
+		},
+	}
+
+	expectedDHODoc = map[string]interface{}{
+		"docId":                         dhoId,
+		"createdDate":                   "2020-11-12T18:37:47.000Z",
+		"updatedDate":                   "2020-11-12T19:48:47.000Z",
+		"creator":                       "dao.hypha1",
+		"contract":                      "contract2",
+		"type":                          "Dho",
+		"details_rootNode_n":            "dao.hypha2",
+		"details_timeShareX100_i":       int64(82),
+		"details_timeShareX100_i_s":     "82",
+		"details_strToInt_s":            "70",
+		"system_originalApprovedDate_t": "2021-04-12T05:09:36.5Z",
+		"edges": map[string]interface{}{
+			"startPeriod": []interface{}{period1Id},
+			"member":      []interface{}{member1Id},
+		},
+	}
+
+	cursor = "cursor5_2"
+	err = docbeat.StoreDocument(dhoDoc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing member document 2")
+	member2Id := "32"
+	member2IdI, _ := strconv.ParseUint(member2Id, 10, 64)
+	member2Doc := getMemberDoc(member2IdI, "member2")
+	expectedMember2Doc := getMemberValues(member2IdI, "member2")
+	cursor = "cursor5_3"
+
+	err = docbeat.StoreDocument(member2Doc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertStoredDoc(t, expectedMember2Doc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Adding member2 edge")
+	cursor = "cursor5_4"
+	err = docbeat.MutateEdge(domain.NewChainEdge("member", dhoId, member2Id), false, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	expectedDHODoc["edges"].(map[string]interface{})["member"] = []interface{}{member1Id, member2Id}
+
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Should add edge for non blacklisted applicant.of Dao User edge")
+	cursor = "cursor5_10"
+	err = docbeat.MutateEdge(domain.NewChainEdge("applicant.of", dhoId, daoUser1Id), false, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	expectedDHODoc["edges"].(map[string]interface{})["applicantOf"] = []interface{}{daoUser1Id}
+
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Deleting member2 edge")
+	cursor = "cursor5_5"
+	err = docbeat.MutateEdge(domain.NewChainEdge("member", dhoId, member2Id), true, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	expectedDHODoc["edges"].(map[string]interface{})["member"] = []interface{}{member1Id}
+
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Deleting period edge")
+	cursor = "cursor5_6"
+	err = docbeat.MutateEdge(domain.NewChainEdge("start.period", dhoId, period1Id), true, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	expectedDHODoc["edges"].(map[string]interface{})["startPeriod"] = []interface{}{}
+
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Deleting member1 edge")
+	cursor = "cursor5_7"
+	err = docbeat.MutateEdge(domain.NewChainEdge("member", dhoId, member1Id), true, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	expectedDHODoc["edges"].(map[string]interface{})["member"] = []interface{}{}
+
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Deleting dho doc contract1")
 	cursor = "cursor6"
 	err = docbeat.DeleteDocument(dhoDoc, cursor, contract1Config)
 	assert.NilError(t, err)
 	assertDocNotExists(t, dhoId, contract1Config.IndexName)
 	assertCursor(t, cursor)
 
-	cursor = "cursor5"
+	t.Log("Deleting period doc contract1")
+	cursor = "cursor7"
 	err = docbeat.DeleteDocument(periodDoc, cursor, contract1Config)
 	assert.NilError(t, err)
 	assertDocNotExists(t, period1Id, contract1Config.IndexName)
 	assertCursor(t, cursor)
 
-	cursor = "cursor6"
-	err = docbeat.DeleteDocument(memberDoc, cursor, contract1Config)
+	t.Log("Deleting member1 doc")
+	cursor = "cursor8"
+	err = docbeat.DeleteDocument(member1Doc, cursor, contract1Config)
 	assert.NilError(t, err)
 	assertDocNotExists(t, member1Id, contract1Config.IndexName)
 	assertCursor(t, cursor)
 
-	cursor = "cursor7"
+	t.Log("Deleting member2 doc")
+	cursor = "cursor8_1"
+	err = docbeat.DeleteDocument(member2Doc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertDocNotExists(t, member2Id, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Deleting dho doc contract2")
+	cursor = "cursor9"
 	err = docbeat.DeleteDocument(dhoDoc, cursor, contract2Config)
 	assert.NilError(t, err)
 	assertDocNotExists(t, dhoId, contract2Config.IndexName)
 	assertCursor(t, cursor)
 
-	cursor = "cursor8"
+	t.Log("Deleting period doc contract2")
+	cursor = "cursor10"
 	err = docbeat.DeleteDocument(periodDoc, cursor, contract2Config)
 	assert.NilError(t, err)
 	assertDocNotExists(t, period1Id, contract2Config.IndexName)
@@ -562,7 +805,6 @@ func TestToParsedDoc(t *testing.T) {
 
 	expectedDoc := map[string]interface{}{
 		"docId":                          dhoId,
-		"docId_i":                        dhoIdI,
 		"createdDate":                    "2020-11-12T18:27:47.000Z",
 		"updatedDate":                    "2020-11-12T19:27:47.000Z",
 		"creator":                        "dao.hypha",
@@ -590,7 +832,6 @@ func TestToParsedDoc(t *testing.T) {
 
 	expectedDoc = map[string]interface{}{
 		"docId":                          dhoId,
-		"docId_i":                        dhoIdI,
 		"createdDate":                    "2020-11-12T18:27:47.000Z",
 		"updatedDate":                    "2020-11-12T19:27:47.000Z",
 		"creator":                        "dao.hypha",
@@ -618,7 +859,6 @@ func TestToParsedDoc(t *testing.T) {
 
 	expectedDoc = map[string]interface{}{
 		"docId":                          dhoId,
-		"docId_i":                        dhoIdI,
 		"createdDate":                    "2020-11-12T18:27:47.000Z",
 		"updatedDate":                    "2020-11-12T19:27:47.000Z",
 		"creator":                        "dao.hypha",
@@ -645,7 +885,6 @@ func TestToParsedDoc(t *testing.T) {
 
 	expectedDoc = map[string]interface{}{
 		"docId":                          dhoId,
-		"docId_i":                        dhoIdI,
 		"createdDate":                    "2020-11-12T18:27:47.000Z",
 		"updatedDate":                    "2020-11-12T19:27:47.000Z",
 		"creator":                        "dao.hypha",
@@ -674,7 +913,6 @@ func TestToParsedDoc(t *testing.T) {
 
 	expectedDoc = map[string]interface{}{
 		"docId":                          dhoId,
-		"docId_i":                        dhoIdI,
 		"createdDate":                    "2020-11-12T18:27:47.000Z",
 		"updatedDate":                    "2020-11-12T19:27:47.000Z",
 		"contract":                       "contract1",
@@ -712,11 +950,11 @@ func TestToParsedDoc(t *testing.T) {
 
 	actualDoc, err = docbeat.ToParsedDoc(dhoDoc)
 	assert.NilError(t, err)
-	assertDoc(t, expectedDoc, actualDoc, []string{"60", "This is a title", "dao.hypha", "dho", "90", dhoId})
+	assertDoc(t, expectedDoc, actualDoc, []string{"60", "This is a title", "dao.hypha", "dho", "90"})
 }
 
 func assertStoredDoc(t *testing.T, doc map[string]interface{}, docIndex string) {
-	d, err := docbeat.GetDocument(doc["docId"].(string), docIndex)
+	d, err := docbeat.GetDocument(doc["docId"].(string), docIndex, nil)
 	assert.NilError(t, err)
 	assertDoc(t, doc, d, nil)
 }
@@ -815,7 +1053,7 @@ func getMemberDoc(docIdI uint64, account string) *domain.ChainDocument {
 	}
 }
 
-func getUserDoc(docIdI uint64, account string) *domain.ChainDocument {
+func getDaoUserDoc(docIdI uint64, account string) *domain.ChainDocument {
 	return &domain.ChainDocument{
 		ID:          docIdI,
 		CreatedDate: "2020-11-12T19:27:47.000",
@@ -851,7 +1089,7 @@ func getUserDoc(docIdI uint64, account string) *domain.ChainDocument {
 					Label: "type",
 					Value: []interface{}{
 						"name",
-						"user",
+						"dao.user",
 					},
 				},
 			},
@@ -859,15 +1097,70 @@ func getUserDoc(docIdI uint64, account string) *domain.ChainDocument {
 	}
 }
 
-func getUserValues(docIdI uint64, account string) map[string]interface{} {
+func getDaoUserValues(docIdI uint64, account string) map[string]interface{} {
 	return map[string]interface{}{
 		"docId":             strconv.FormatUint(docIdI, 10),
-		"docId_i":           docIdI,
 		"createdDate":       "2020-11-12T19:27:47.000Z",
 		"updatedDate":       "2020-11-12T19:27:47.000Z",
 		"creator":           account,
 		"contract":          "contract1",
-		"type":              "User",
+		"type":              "DaoUser",
+		"details_account_n": account,
+	}
+}
+
+func getVoteDoc(docIdI uint64, account string) *domain.ChainDocument {
+	return &domain.ChainDocument{
+		ID:          docIdI,
+		CreatedDate: "2020-11-12T19:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
+		Creator:     account,
+		Contract:    "contract1",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "account",
+					Value: []interface{}{
+						"name",
+						account,
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"vote",
+					},
+				},
+			},
+		},
+	}
+}
+
+func getVoteValues(docIdI uint64, account string) map[string]interface{} {
+	return map[string]interface{}{
+		"docId":             strconv.FormatUint(docIdI, 10),
+		"createdDate":       "2020-11-12T19:27:47.000Z",
+		"updatedDate":       "2020-11-12T19:27:47.000Z",
+		"creator":           account,
+		"contract":          "contract1",
+		"type":              "Vote",
 		"details_account_n": account,
 	}
 }
@@ -875,7 +1168,6 @@ func getUserValues(docIdI uint64, account string) map[string]interface{} {
 func getMemberValues(docIdI uint64, account string) map[string]interface{} {
 	return map[string]interface{}{
 		"docId":             strconv.FormatUint(docIdI, 10),
-		"docId_i":           docIdI,
 		"createdDate":       "2020-11-12T19:27:47.000Z",
 		"updatedDate":       "2020-11-12T19:27:47.000Z",
 		"creator":           account,
@@ -933,7 +1225,6 @@ func getPeriodDoc(id uint64, number int64) *domain.ChainDocument {
 func getPeriodValues(docId uint64, number int64) map[string]interface{} {
 	return map[string]interface{}{
 		"docId":              strconv.FormatUint(docId, 10),
-		"docId_i":            docId,
 		"createdDate":        "2020-11-12T18:27:47.000Z",
 		"updatedDate":        "2020-11-12T19:27:47.000Z",
 		"creator":            "dao.hypha",

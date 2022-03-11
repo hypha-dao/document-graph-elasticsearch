@@ -4,17 +4,22 @@ eos-endpoint: https://testnet.telos.caleos.io
 elastic-endpoint: https://localhost:9200 #username and password should be set using env vars ES_USER, ES_PASSWORD
 elastic-ca: /home/sebastian/vsc-workspace/elastic-helm-charts/elasticsearch/examples/security/elastic-certificate.pem
 prometheus-port: 2114
-start-block: 151824876
+start-block: 147046658
 heart-beat-frequency: 100
 #dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
-cursor-index-prefix: testnet1
+cursor-index-prefix: dho-test
 add-ints-as-strings: false
 
 contracts:
-- name: tlaclocmant2
+- name: mtdhoxhyphaa
   doc-table-name: documents
-  index-prefix: traceability
-
+  edge-table-name: edges
+  index-prefix: dho-test
+  edge-black-list:
+  - from: "*"
+    to: "Vote"
+    name: "*"
+    
 single-text-search-field:
   asset: none
   checksum256: none
@@ -22,3 +27,6 @@ single-text-search-field:
   name: none
   time_point: none
   string: none
+
+
+  

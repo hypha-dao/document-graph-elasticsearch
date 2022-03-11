@@ -12,3 +12,4 @@ cursor-index-prefix: testnet1
 contracts:
 - name: contract1
   doc-table-name: documents
+  edge-table-name: edges

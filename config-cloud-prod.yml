@@ -12,6 +12,7 @@ cursor-index-prefix: dg
 contracts:
 - name: dg.sh
   doc-table-name: documents
+  edge-table-name: edges
   index-prefix: dg
 
 single-text-search-field:

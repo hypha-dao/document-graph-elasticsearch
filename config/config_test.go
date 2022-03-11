@@ -30,16 +30,35 @@ func TestValidConfig(t *testing.T) {
 	assert.Equal(t, cfg.AddIntsAsStrings, true)
 	expectedContracts := config.ContractsConfig{
 		"contract1": {
-			Name:         "contract1",
-			DocTableName: "documents",
-			IndexPrefix:  "index1",
-			IndexName:    "index1-documents",
+			Name:          "contract1",
+			DocTableName:  "documents",
+			EdgeTableName: "edges",
+			IndexPrefix:   "index1",
+			IndexName:     "index1-documents",
+			EdgeBlackList: config.EdgeBlackList{
+				{
+					From: "*",
+					To:   "Vote",
+					Name: "*",
+				},
+				{
+					From: "Role",
+					To:   "Dao",
+					Name: "*",
+				},
+				{
+					From: "Payout",
+					To:   "Member",
+					Name: "payed",
+				},
+			},
 		},
 		"contract2": {
-			Name:         "contract2",
-			DocTableName: "docs",
-			IndexPrefix:  "index2",
-			IndexName:    "index2-documents",
+			Name:          "contract2",
+			DocTableName:  "docs",
+			EdgeTableName: "edgs",
+			IndexPrefix:   "index2",
+			IndexName:     "index2-documents",
 		},
 	}
 	assert.DeepEqual(t, expectedContracts, cfg.Contracts)
@@ -53,6 +72,17 @@ func TestValidConfig(t *testing.T) {
 	assert.Equal(t, config.SingleTextSearchFieldOp_Replace, cfg.GetSingleTextSearchFieldOp(domain.ContentType_Asset))
 	assert.Equal(t, config.SingleTextSearchFieldOp_Include, cfg.GetSingleTextSearchFieldOp(domain.ContentType_Int64))
 	assert.Equal(t, config.SingleTextSearchFieldOp_None, cfg.GetSingleTextSearchFieldOp(domain.ContentType_Checksum256))
+
+	contractCfg := cfg.Contracts.Get("contract1")
+
+	assert.Assert(t, contractCfg.EdgeBlackList.IsBlackListed("any", "Vote", "any"))
+	assert.Assert(t, contractCfg.EdgeBlackList.IsBlackListed("Role", "Dao", "any"))
+	assert.Assert(t, contractCfg.EdgeBlackList.IsBlackListed("Payout", "Member", "payed"))
+
+	assert.Assert(t, !contractCfg.EdgeBlackList.IsBlackListed("any", "Dao", "any"))
+	assert.Assert(t, !contractCfg.EdgeBlackList.IsBlackListed("Member", "Dao", "any"))
+	assert.Assert(t, !contractCfg.EdgeBlackList.IsBlackListed("Dao", "Member", "payed"))
+
 }
 
 func TestValidConfigNoSingleTextSearchFieldConfig(t *testing.T) {
@@ -75,16 +105,18 @@ func TestValidConfigNoSingleTextSearchFieldConfig(t *testing.T) {
 	assert.Equal(t, cfg.AddIntsAsStrings, false)
 	expectedContracts := config.ContractsConfig{
 		"contract1": {
-			Name:         "contract1",
-			DocTableName: "documents",
-			IndexPrefix:  "index1",
-			IndexName:    "index1-documents",
+			Name:          "contract1",
+			DocTableName:  "documents",
+			EdgeTableName: "edges",
+			IndexPrefix:   "index1",
+			IndexName:     "index1-documents",
 		},
 		"contract2": {
-			Name:         "contract2",
-			DocTableName: "docs",
-			IndexPrefix:  "index2",
-			IndexName:    "index2-documents",
+			Name:          "contract2",
+			DocTableName:  "docs",
+			EdgeTableName: "edgs",
+			IndexPrefix:   "index2",
+			IndexName:     "index2-documents",
 		},
 	}
 	assert.DeepEqual(t, expectedContracts, cfg.Contracts)
@@ -112,16 +144,18 @@ func TestValidConfigSingleTextSearchFieldAllNone(t *testing.T) {
 	assert.Equal(t, cfg.AddIntsAsStrings, false)
 	expectedContracts := config.ContractsConfig{
 		"contract1": {
-			Name:         "contract1",
-			DocTableName: "documents",
-			IndexPrefix:  "index1",
-			IndexName:    "index1-documents",
+			Name:          "contract1",
+			DocTableName:  "documents",
+			EdgeTableName: "edges",
+			IndexPrefix:   "index1",
+			IndexName:     "index1-documents",
 		},
 		"contract2": {
-			Name:         "contract2",
-			DocTableName: "docs",
-			IndexPrefix:  "index2",
-			IndexName:    "index2-documents",
+			Name:          "contract2",
+			DocTableName:  "docs",
+			EdgeTableName: "edgs",
+			IndexPrefix:   "index2",
+			IndexName:     "index2-documents",
 		},
 	}
 	assert.DeepEqual(t, expectedContracts, cfg.Contracts)
@@ -162,4 +196,11 @@ func TestShouldFailForDuplicateContract(t *testing.T) {
 	os.Setenv("ES_PASSWORD", "password")
 	_, err := config.LoadConfig("./config-duplicate-contract.yml")
 	assert.ErrorContains(t, err, "was specified more than once")
+}
+
+func TestShouldFailForInvalidEdgeBlackList(t *testing.T) {
+	os.Setenv("ES_USER", "elastic")
+	os.Setenv("ES_PASSWORD", "password")
+	_, err := config.LoadConfig("./config-invalid-edge-black-list.yml")
+	assert.ErrorContains(t, err, "edge blacklist 'to' property is required, element")
 }

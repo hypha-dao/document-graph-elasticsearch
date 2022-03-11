@@ -18,10 +18,12 @@ var (
 )
 
 type ContractConfig struct {
-	Name         string `mapstructure:"name"`
-	DocTableName string `mapstructure:"doc-table-name"`
-	IndexPrefix  string `mapstructure:"index-prefix"`
-	IndexName    string
+	Name          string        `mapstructure:"name"`
+	DocTableName  string        `mapstructure:"doc-table-name"`
+	EdgeTableName string        `mapstructure:"edge-table-name"`
+	IndexPrefix   string        `mapstructure:"index-prefix"`
+	EdgeBlackList EdgeBlackList `mapstructure:"edge-black-list"`
+	IndexName     string
 }
 
 func (m *ContractConfig) Init() error {
@@ -43,10 +45,14 @@ func (m *ContractConfig) Validate() error {
 		return fmt.Errorf("contracts doc-table-name property is required")
 	}
 
+	if m.EdgeTableName == "" {
+		return fmt.Errorf("contracts edge-table-name property is required")
+	}
+
 	if m.IndexPrefix == "" {
 		return fmt.Errorf("contracts index-prefix property is required")
 	}
-	return nil
+	return m.EdgeBlackList.Validate()
 }
 
 func (m *ContractConfig) String() string {
@@ -68,14 +74,108 @@ func (m *ContractConfig) String() string {
 
 type ContractsConfig map[string]*ContractConfig
 
-func (m ContractsConfig) Get(contract string, table string) *ContractConfig {
+func (m ContractsConfig) Get(contract string) *ContractConfig {
 	if config, ok := m[contract]; ok {
-		if config.DocTableName == table {
-			return config
+		return config
+	}
+	return nil
+}
+
+type EdgeBlackListElement struct {
+	From string `mapstructure:"from"`
+	To   string `mapstructure:"to"`
+	Name string `mapstructure:"name"`
+}
+
+func (m *EdgeBlackListElement) String() string {
+
+	return fmt.Sprintf(
+		`
+		EdgeBlackListElement{
+			From: %v,
+			To: %v,
+			Name: %v,
+		}
+		`,
+		m.From,
+		m.To,
+		m.Name,
+	)
+}
+
+func (m *EdgeBlackListElement) Validate() error {
+
+	if m.Name == "" {
+		return fmt.Errorf("edge blacklist 'name' property is required, element: %v", m)
+	}
+
+	if m.From == "" {
+		return fmt.Errorf("edge blacklist 'from' property is required, element: %v", m)
+	}
+
+	if m.To == "" {
+		return fmt.Errorf("edge blacklist 'to' property is required, element: %v", m)
+	}
+	return nil
+}
+
+func (m EdgeBlackListElement) IsBlackListed(from, to, name string) bool {
+	return (m.From == from || m.From == "*") &&
+		(m.To == to || m.To == "*") &&
+		(m.Name == name || m.Name == "*")
+
+}
+
+type EdgeBlackList []*EdgeBlackListElement
+
+func (m EdgeBlackList) Validate() error {
+
+	for _, e := range m {
+		if err := e.Validate(); err != nil {
+			return err
 		}
 	}
 	return nil
 }
+
+func (m EdgeBlackList) IsBlackListed(from, to, name string) bool {
+
+	for _, e := range m {
+		if e.IsBlackListed(from, to, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// type EdgeBlackListMap map[string]map[string]map[string]bool
+
+// func (m EdgeBlackList) generateMap() EdgeBlackListMap {
+// 	eblm := make(EdgeBlackListMap, 0)
+
+// 	for _, e := range m {
+// 		if _, ok := eblm[e.Name]; !ok {
+// 			eblm[e.Name] = make(map[string]map[string]bool, 0)
+// 		}
+// 		mf := eblm[e.Name]
+// 		if _, ok := mf[e.From]; !ok {
+// 			mf[e.From] = make(map[string]bool, 0)
+// 		}
+// 		mt := mf[e.From]
+// 		mt[e.To] = true
+// 	}
+// 	return eblm
+// }
+
+// func (m EdgeBlackList) IsBlackListed(from, to, name string) bool {
+// 	mf, ok := m[name]
+
+// }
+
+// func (m EdgeBlackList) isBlackListed(from, to, name string) bool {
+// 	mf, ok := m[name]
+
+// }
 
 type Config struct {
 	ContractsRaw          []*ContractConfig `mapstructure:"contracts"`
@@ -122,6 +222,7 @@ func LoadConfig(filePath string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	config.CursorIndexName = getIndexName(config.CursorIndexPrefix, CursorIndex)
 	return &config, nil
 }

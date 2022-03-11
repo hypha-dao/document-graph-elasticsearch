@@ -1,0 +1,46 @@
+GET dho-test-documents/_search
+{
+  "query": {
+    "multi_match" : {
+      "query":    "teste",
+      "fuzziness": "auto", 
+      "fields": [ "*" ]
+    }
+  }
+}
+
+GET dho-test-documents/_search
+{
+  "query": {
+    "match": {
+      "docId": "9"
+    }
+  }
+}
+
+GET dho-test-documents/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+           "multi_match" : {
+            "query":    "teste",
+            "fuzziness": "auto", 
+            "fields": [ "*" ]
+          }
+        },
+        {
+           "match" : {
+            "edges.dao":    "2"
+          }
+        },
+        {
+           "match" : {
+            "edges.ownedby":    "3"
+          }
+        }
+      ]
+    }
+  }
+}

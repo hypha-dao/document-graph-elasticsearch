@@ -12,6 +12,7 @@ cursor-index-prefix: testnet1
 contracts:
 - name: tlaclocmant2
   doc-table-name: documents
+  edge-table-name: edges
   index-prefix: traceability
 
 single-text-search-field:
