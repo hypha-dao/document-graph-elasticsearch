@@ -624,6 +624,308 @@ func TestOpCycle(t *testing.T) {
 
 }
 
+func TestShouldSkipEdgeProcessingWithoutToType(t *testing.T) {
+
+	setup(t, getBaseConfig())
+	t.Logf("Storing untyped document")
+	untyped1Id := "21"
+	untyped1IdI, _ := strconv.ParseUint(untyped1Id, 10, 64)
+	untypedDoc := getUntypedDoc(untyped1IdI, "account1")
+	expecteduntypedDoc := getUntypedValues(untyped1IdI, "account1")
+	cursor := "cursor0"
+	t.Logf("Storing untyped 1 document in contract1 index")
+	err := docbeat.StoreDocument(untypedDoc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertStoredDoc(t, expecteduntypedDoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	dhoId := "2"
+	dhoIdI, _ := strconv.ParseUint(dhoId, 10, 64)
+	dhoDoc := &domain.ChainDocument{
+		ID:          dhoIdI,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
+		Creator:     "dao.hypha",
+		Contract:    "contract1",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.hypha",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"delete",
+					},
+				},
+				{
+					Label: "hvoice_salary_per_phase",
+					Value: []interface{}{
+						"asset",
+						"4133.04 HVOICE",
+					},
+				},
+				{
+					Label: "time_share_x100",
+					Value: []interface{}{
+						"int64",
+						"90",
+					},
+				},
+			},
+			{
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.hypha",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "hvoice_salary_per_phase",
+					Value: []interface{}{
+						"asset",
+						"4133.04 HVOICE",
+					},
+				},
+				{
+					Label: "time_share_x100",
+					Value: []interface{}{
+						"int64",
+						"60",
+					},
+				},
+				{
+					Label: "str_to_int",
+					Value: []interface{}{
+						"string",
+						"60",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"dho",
+					},
+				},
+				{
+					Label: "original_approved_date",
+					Value: []interface{}{
+						"time_point",
+						"2021-04-12T05:09:36.5",
+					},
+				},
+			},
+		},
+	}
+
+	expectedDHODoc := map[string]interface{}{
+		"docId":                          dhoId,
+		"createdDate":                    "2020-11-12T18:27:47.000Z",
+		"updatedDate":                    "2020-11-12T19:27:47.000Z",
+		"creator":                        "dao.hypha",
+		"contract":                       "contract1",
+		"type":                           "Dho",
+		"details_rootNode_n":             "dao.hypha",
+		"details_hvoiceSalaryPerPhase_a": "4133.04 HVOICE",
+		"details_timeShareX100_i":        int64(60),
+		"details_timeShareX100_i_s":      "60",
+		"details_strToInt_s":             "60",
+		"delete_rootNode_n":              "dao.hypha",
+		"delete_hvoiceSalaryPerPhase_a":  "4133.04 HVOICE",
+		"delete_timeShareX100_i":         int64(90),
+		"delete_timeShareX100_i_s":       "90",
+		"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
+	}
+	t.Logf("Storing dho document in contract1 index")
+	cursor = "cursor2"
+	err = docbeat.StoreDocument(dhoDoc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Adding edge with TO document not having a type")
+	cursor = "cursor5_1"
+	err = docbeat.MutateEdge(domain.NewChainEdge("member", dhoId, untyped1Id), false, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+}
+
+func TestShouldSkipEdgeProcessingWithoutFromType(t *testing.T) {
+
+	setup(t, getBaseConfig())
+	t.Logf("Storing untyped document")
+	untyped1Id := "21"
+	untyped1IdI, _ := strconv.ParseUint(untyped1Id, 10, 64)
+	untypedDoc := getUntypedDoc(untyped1IdI, "account1")
+	expecteduntypedDoc := getUntypedValues(untyped1IdI, "account1")
+	cursor := "cursor0"
+	t.Logf("Storing untyped 1 document in contract1 index")
+	err := docbeat.StoreDocument(untypedDoc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertStoredDoc(t, expecteduntypedDoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	dhoId := "2"
+	dhoIdI, _ := strconv.ParseUint(dhoId, 10, 64)
+	dhoDoc := &domain.ChainDocument{
+		ID:          dhoIdI,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
+		Creator:     "dao.hypha",
+		Contract:    "contract1",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.hypha",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"delete",
+					},
+				},
+				{
+					Label: "hvoice_salary_per_phase",
+					Value: []interface{}{
+						"asset",
+						"4133.04 HVOICE",
+					},
+				},
+				{
+					Label: "time_share_x100",
+					Value: []interface{}{
+						"int64",
+						"90",
+					},
+				},
+			},
+			{
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.hypha",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "hvoice_salary_per_phase",
+					Value: []interface{}{
+						"asset",
+						"4133.04 HVOICE",
+					},
+				},
+				{
+					Label: "time_share_x100",
+					Value: []interface{}{
+						"int64",
+						"60",
+					},
+				},
+				{
+					Label: "str_to_int",
+					Value: []interface{}{
+						"string",
+						"60",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"dho",
+					},
+				},
+				{
+					Label: "original_approved_date",
+					Value: []interface{}{
+						"time_point",
+						"2021-04-12T05:09:36.5",
+					},
+				},
+			},
+		},
+	}
+
+	expectedDHODoc := map[string]interface{}{
+		"docId":                          dhoId,
+		"createdDate":                    "2020-11-12T18:27:47.000Z",
+		"updatedDate":                    "2020-11-12T19:27:47.000Z",
+		"creator":                        "dao.hypha",
+		"contract":                       "contract1",
+		"type":                           "Dho",
+		"details_rootNode_n":             "dao.hypha",
+		"details_hvoiceSalaryPerPhase_a": "4133.04 HVOICE",
+		"details_timeShareX100_i":        int64(60),
+		"details_timeShareX100_i_s":      "60",
+		"details_strToInt_s":             "60",
+		"delete_rootNode_n":              "dao.hypha",
+		"delete_hvoiceSalaryPerPhase_a":  "4133.04 HVOICE",
+		"delete_timeShareX100_i":         int64(90),
+		"delete_timeShareX100_i_s":       "90",
+		"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
+	}
+	t.Logf("Storing dho document in contract1 index")
+	cursor = "cursor2"
+	err = docbeat.StoreDocument(dhoDoc, cursor, contract1Config)
+	assert.NilError(t, err)
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+
+	t.Log("Adding edge with FROM document not having a type")
+	cursor = "cursor5_1"
+	err = docbeat.MutateEdge(domain.NewChainEdge("dho", untyped1Id, dhoId), false, cursor, contract1Config)
+	assert.NilError(t, err)
+
+	assertStoredDoc(t, expectedDHODoc, contract1Config.IndexName)
+	assertCursor(t, cursor)
+}
+
 // func TestSingleSearchTextFieldMappingsNotConfiguredForNoSingleTextField(t *testing.T) {
 // 	setup(t, getBaseConfig())
 // 	exists, err := docbeat.IndexExists(contract1Config.IndexName)
@@ -1232,5 +1534,44 @@ func getPeriodValues(docId uint64, number int64) map[string]interface{} {
 		"type":               "Period",
 		"details_number_i":   number,
 		"details_number_i_s": fmt.Sprintf("%v", number),
+	}
+}
+
+func getUntypedDoc(docIdI uint64, account string) *domain.ChainDocument {
+	return &domain.ChainDocument{
+		ID:          docIdI,
+		CreatedDate: "2020-11-12T19:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
+		Creator:     account,
+		Contract:    "contract1",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "account",
+					Value: []interface{}{
+						"name",
+						account,
+					},
+				},
+			},
+		},
+	}
+}
+
+func getUntypedValues(docIdI uint64, account string) map[string]interface{} {
+	return map[string]interface{}{
+		"docId":             strconv.FormatUint(docIdI, 10),
+		"createdDate":       "2020-11-12T19:27:47.000Z",
+		"updatedDate":       "2020-11-12T19:27:47.000Z",
+		"creator":           account,
+		"contract":          "contract1",
+		"details_account_n": account,
 	}
 }

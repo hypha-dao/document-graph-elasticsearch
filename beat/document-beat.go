@@ -119,50 +119,57 @@ func (m *DocumentBeat) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cu
 		}
 		if docTo != nil {
 			log.Infof("Found TO document: %v", docTo)
-			if !contractConfig.EdgeBlackList.IsBlackListed(docFrom["type"].(string), docTo["type"].(string), edgeName) {
-				log.Infof("Edge: %v, not black listed, mutating, deleteOp: %v", chainEdge, deleteOp)
-				edge := []interface{}{}
-				if edges, ok := docFrom[EdgesPropertyName].(map[string]interface{}); ok {
-					if e, ok := edges[edgeName].([]interface{}); ok {
-						edge = e
-					}
-				}
-				childId := docTo["docId"].(string)
-				pos := find(childId, edge)
-				wasUpdated := false
-				if pos == -1 && !deleteOp {
-					log.Infof("Adding docId: %v, to edge: %v for document: %v", childId, edgeName, chainEdge.From)
-					edge = append(edge, childId)
-					wasUpdated = true
-				} else if pos >= 0 && deleteOp {
-					log.Infof("Deleting docId: %v, from edge: %v for document: %v", childId, edgeName, chainEdge.From)
-					edge = append(edge[0:pos], edge[pos+1:]...)
-					wasUpdated = true
-				}
-				if wasUpdated {
-					update := map[string]interface{}{
-						EdgesPropertyName: map[string]interface{}{
-							edgeName: edge,
-						},
-					}
-					log.Infof("Updating document with updated edge: %v, update: %v, cursor: %v", edgeName, update, cursor)
-					_, err = m.ElasticSearch.Update(contractConfig.IndexName, docFrom["docId"].(string), update, false)
-					if err != nil {
-						return fmt.Errorf("failed updating document with updated edge: %v, edge values: %v, cursor: %v, contract config: %v, error: %v", edgeName, edge, cursor, contractConfig, err)
+			if fromType, ok := docFrom["type"].(string); ok {
+				if toType, ok := docTo["type"].(string); ok {
+					if !contractConfig.EdgeBlackList.IsBlackListed(fromType, toType, edgeName) {
+						log.Infof("Edge: %v, not black listed, mutating, deleteOp: %v", chainEdge, deleteOp)
+						edge := []interface{}{}
+						if edges, ok := docFrom[EdgesPropertyName].(map[string]interface{}); ok {
+							if e, ok := edges[edgeName].([]interface{}); ok {
+								edge = e
+							}
+						}
+						childId := docTo["docId"].(string)
+						pos := find(childId, edge)
+						wasUpdated := false
+						if pos == -1 && !deleteOp {
+							log.Infof("Adding docId: %v, to edge: %v for document: %v", childId, edgeName, chainEdge.From)
+							edge = append(edge, childId)
+							wasUpdated = true
+						} else if pos >= 0 && deleteOp {
+							log.Infof("Deleting docId: %v, from edge: %v for document: %v", childId, edgeName, chainEdge.From)
+							edge = append(edge[0:pos], edge[pos+1:]...)
+							wasUpdated = true
+						}
+						if wasUpdated {
+							update := map[string]interface{}{
+								EdgesPropertyName: map[string]interface{}{
+									edgeName: edge,
+								},
+							}
+							log.Infof("Updating document with updated edge: %v, update: %v, cursor: %v", edgeName, update, cursor)
+							_, err = m.ElasticSearch.Update(contractConfig.IndexName, docFrom["docId"].(string), update, false)
+							if err != nil {
+								return fmt.Errorf("failed updating document with updated edge: %v, edge values: %v, cursor: %v, contract config: %v, error: %v", edgeName, edge, cursor, contractConfig, err)
+							}
+						} else {
+							log.Warnf("Edge: %v, didn't cause an update, skipping", chainEdge)
+						}
+
+					} else {
+						log.Infof("Edge: %v, black listed, skipping", chainEdge)
 					}
 				} else {
-					log.Warnf("Edge: %v, didn't cause an update, skipping", chainEdge)
+					log.Warnf("Unable to process edge, TO Document: %v does not have a type, cursor: %v, contract config: %v", chainEdge.To, cursor, contractConfig)
 				}
-
 			} else {
-				log.Infof("Edge: %v, black listed, skipping", chainEdge)
+				log.Warnf("Unable to process edge, FROM Document: %v does not have a type, cursor: %v, contract config: %v", chainEdge.From, cursor, contractConfig)
 			}
-
 		} else {
-			log.Warnf("Processing edge, To Document: %v not found, cursor: %v, contract config: %v", chainEdge.To, cursor, contractConfig)
+			log.Warnf("Unable to process edge, TO Document: %v not found, cursor: %v, contract config: %v", chainEdge.To, cursor, contractConfig)
 		}
 	} else {
-		log.Warnf("Processing edge, From Document: %v not found, cursor: %v, contract config: %v", chainEdge.From, cursor, contractConfig)
+		log.Warnf("Unable to process edge, FROM Document: %v not found, cursor: %v, contract config: %v", chainEdge.From, cursor, contractConfig)
 	}
 	return m.UpdateCursor(cursor)
 }
