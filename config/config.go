@@ -17,6 +17,7 @@ var (
 	DocumentIndex                                           = "documents"
 )
 
+// Stores a contract configuration
 type ContractConfig struct {
 	Name          string        `mapstructure:"name"`
 	DocTableName  string        `mapstructure:"doc-table-name"`
@@ -26,6 +27,7 @@ type ContractConfig struct {
 	IndexName     string
 }
 
+// Validates a contract configuration and generates full index names
 func (m *ContractConfig) Init() error {
 
 	if err := m.Validate(); err != nil {
@@ -35,6 +37,7 @@ func (m *ContractConfig) Init() error {
 	return nil
 }
 
+// Validates the contract configuration
 func (m *ContractConfig) Validate() error {
 
 	if m.Name == "" {
@@ -81,6 +84,7 @@ func (m ContractsConfig) Get(contract string) *ContractConfig {
 	return nil
 }
 
+// Stores the edge black list configuration
 type EdgeBlackListElement struct {
 	From string `mapstructure:"from"`
 	To   string `mapstructure:"to"`
@@ -103,6 +107,7 @@ func (m *EdgeBlackListElement) String() string {
 	)
 }
 
+// Validates the edge black list configuration
 func (m *EdgeBlackListElement) Validate() error {
 
 	if m.Name == "" {
@@ -119,6 +124,7 @@ func (m *EdgeBlackListElement) Validate() error {
 	return nil
 }
 
+// Checks whether an edge is blacklisted
 func (m EdgeBlackListElement) IsBlackListed(from, to, name string) bool {
 	return (m.From == from || m.From == "*") &&
 		(m.To == to || m.To == "*") &&
@@ -128,6 +134,7 @@ func (m EdgeBlackListElement) IsBlackListed(from, to, name string) bool {
 
 type EdgeBlackList []*EdgeBlackListElement
 
+// Validates all configured edge black list elements
 func (m EdgeBlackList) Validate() error {
 
 	for _, e := range m {
@@ -138,6 +145,7 @@ func (m EdgeBlackList) Validate() error {
 	return nil
 }
 
+// Checks all edge black list elements to determine whether the edge is black listed
 func (m EdgeBlackList) IsBlackListed(from, to, name string) bool {
 
 	for _, e := range m {
@@ -177,6 +185,7 @@ func (m EdgeBlackList) IsBlackListed(from, to, name string) bool {
 
 // }
 
+// Loads, validates and stores the initial configuration
 type Config struct {
 	ContractsRaw          []*ContractConfig `mapstructure:"contracts"`
 	CursorIndexPrefix     string            `mapstructure:"cursor-index-prefix"`
@@ -196,7 +205,8 @@ type Config struct {
 	CursorIndexName       string
 }
 
-// LoadConfig reads configuration from file or environment variables.
+// LoadConfig reads configuration from file or environment variables, validates and structures
+// it to make it easily accesibles
 func LoadConfig(filePath string) (*Config, error) {
 	viper.SetConfigFile(filePath)
 
@@ -235,14 +245,17 @@ func (m *Config) GetSingleTextSearchFieldOp(contentType string) SingleTextSearch
 	return SingleTextSearchFieldOp(op)
 }
 
+//Generates the full cursor index name
 func (m *Config) GetCursorIndexName() string {
 	return getIndexName(m.CursorIndexPrefix, CursorIndex)
 }
 
+//Generates a full index name
 func getIndexName(prefix, suffix string) string {
 	return fmt.Sprintf(`%v-%v`, prefix, suffix)
 }
 
+// Processes contract configuration
 func parseContracts(raw []*ContractConfig) (ContractsConfig, error) {
 	if len(raw) == 0 {
 		return nil, fmt.Errorf("failed parsing contracts, at least one contract must be specified")

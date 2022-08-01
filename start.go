@@ -18,16 +18,25 @@ import (
 	"github.com/sebastianmontero/slog-go/slog"
 )
 
+// Main entry point of the document elastic search stream process, configures the dfuse client and defines the stream handler
+
 var (
 	log *slog.Log
 )
 
+// Dfuse stream handler, processes the table deltas and calls the correct DocumentBeat methods
+// based on the delta type
 type deltaStreamHandler struct {
-	cursor       string
+	// Indicates where in the stream we are located
+	cursor string
+	// Processes the operations indicated by the table deltas and updates elastic search to reflect these changes
 	documentBeat *beat.DocumentBeat
-	config       *config.Config
+	// Stores the initial configuration information
+	config *config.Config
 }
 
+// Called every time there is a table delta of interest, determines what the operation is and calls the
+// corresponding DocumentBeat method
 func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, forkStep pbbstream.ForkStep) {
 	log.Debugf("On Delta: \nCursor: %v \nFork Step: %v \nDelta %v ", cursor, forkStep, delta)
 	contractConfig := m.config.Contracts.Get(delta.Code)
@@ -94,6 +103,8 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 	m.cursor = cursor
 }
 
+// Called every certain amount of blocks and its useful to update the cursor when there are
+// no deltas of interest for a long time
 func (m *deltaStreamHandler) OnHeartBeat(block *pbcodec.Block, cursor string) {
 	err := m.documentBeat.UpdateCursor(cursor)
 	if err != nil {
@@ -102,14 +113,19 @@ func (m *deltaStreamHandler) OnHeartBeat(block *pbcodec.Block, cursor string) {
 	metrics.BlockNumber.Set(float64(block.Number))
 }
 
+// Called when there is an error with the stream connection
 func (m *deltaStreamHandler) OnError(err error) {
 	log.Error(err, "On Error")
 }
 
+// Called when the requested stream completes, should never be called because there is no
+// final block
 func (m *deltaStreamHandler) OnComplete(lastBlockRef bstream.BlockRef) {
 	log.Infof("On Complete Last Block Ref: %v", lastBlockRef)
 }
 
+// Loads the configuration file, creates a new dfuse client and configures it with the stream handler
+// defined above
 func main() {
 	log = slog.New(&slog.Config{Pretty: true, Level: zerolog.DebugLevel}, "start-document-beat")
 	if len(os.Args) != 2 {

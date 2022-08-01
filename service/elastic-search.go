@@ -12,6 +12,7 @@ import (
 	"github.com/sebastianmontero/document-graph-elasticsearch/config"
 )
 
+// Provides convenience methods for interacting with elastic search
 type ElasticSearch struct {
 	Client *elasticsearch7.Client
 }
@@ -45,6 +46,7 @@ func NewElasticSearch(config *config.Config) (*ElasticSearch, error) {
 	}, nil
 }
 
+// Creates or updates a document
 func (m *ElasticSearch) Upsert(index, documentId string, doc interface{}) (map[string]interface{}, error) {
 	marshalledDoc, err := json.Marshal(doc)
 	if err != nil {
@@ -73,6 +75,7 @@ func (m *ElasticSearch) Upsert(index, documentId string, doc interface{}) (map[s
 	return r, nil
 }
 
+// Updates a document
 func (m *ElasticSearch) Update(index, documentId string, update interface{}, upsert bool) (map[string]interface{}, error) {
 	opType := "doc"
 	if upsert {
@@ -109,6 +112,7 @@ func (m *ElasticSearch) Update(index, documentId string, update interface{}, ups
 	return r, nil
 }
 
+// Retrieves a document by id
 func (m *ElasticSearch) Get(index, documentId string, fields []string) (map[string]interface{}, error) {
 
 	req := esapi.GetRequest{
@@ -133,6 +137,7 @@ func (m *ElasticSearch) Get(index, documentId string, fields []string) (map[stri
 	return r["_source"].(map[string]interface{}), nil
 }
 
+// Deletes the specified index
 func (m *ElasticSearch) DeleteIndex(index string) (map[string]interface{}, error) {
 
 	req := esapi.IndicesDeleteRequest{
@@ -155,6 +160,7 @@ func (m *ElasticSearch) DeleteIndex(index string) (map[string]interface{}, error
 	return r, nil
 }
 
+// Checks whether an index exists
 func (m *ElasticSearch) IndexExists(index string) (bool, error) {
 
 	req := esapi.IndicesExistsRequest{
@@ -174,6 +180,7 @@ func (m *ElasticSearch) IndexExists(index string) (bool, error) {
 	return true, nil
 }
 
+// Checks whether a document exists
 func (m *ElasticSearch) DocumentExists(index string, documentId string) (bool, error) {
 
 	req := esapi.ExistsRequest{
@@ -194,6 +201,7 @@ func (m *ElasticSearch) DocumentExists(index string, documentId string) (bool, e
 	return true, nil
 }
 
+// Deletes a document by id
 func (m *ElasticSearch) DeleteDocument(index, documentId string, failIfNotExists bool) (map[string]interface{}, error) {
 
 	req := esapi.DeleteRequest{
@@ -220,6 +228,7 @@ func (m *ElasticSearch) DeleteDocument(index, documentId string, failIfNotExists
 	return r, nil
 }
 
+// Creates or updates the specified index
 func (m *ElasticSearch) UpsertIndex(index, indexBody string) (map[string]interface{}, error) {
 
 	req := esapi.IndicesCreateRequest{
@@ -243,6 +252,7 @@ func (m *ElasticSearch) UpsertIndex(index, indexBody string) (map[string]interfa
 	return r, nil
 }
 
+// Retrieves the specified index
 func (m *ElasticSearch) GetIndex(index string) (map[string]interface{}, error) {
 
 	req := esapi.IndicesGetRequest{
@@ -290,6 +300,7 @@ func (m *ElasticSearch) UpdateMappings(index, mappingsBody string) (map[string]i
 	return r, nil
 }
 
+// Retrieves the mappings for the specified index
 func (m *ElasticSearch) GetMappings(index string) (map[string]interface{}, error) {
 
 	req := esapi.IndicesGetMappingRequest{

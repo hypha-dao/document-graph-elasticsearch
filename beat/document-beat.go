@@ -52,12 +52,14 @@ func (m *SingleTextSearchField) AddValue(value interface{}, op config.SingleText
 	m.WriteString(fmt.Sprintf("%v ", value))
 }
 
+//DocumentBeat Service class to store and retrieve docs from elastic search
 type DocumentBeat struct {
 	ElasticSearch *service.ElasticSearch
 	Cursor        string
 	Config        *config.Config
 }
 
+//New creates a new DocumentBeat instance
 func NewDocumentBeat(elasticSearch *service.ElasticSearch, config *config.Config, logConfig *slog.Config) (*DocumentBeat, error) {
 	log = slog.New(logConfig, "document-beat")
 
@@ -79,6 +81,7 @@ func NewDocumentBeat(elasticSearch *service.ElasticSearch, config *config.Config
 	return docbeat, nil
 }
 
+//Creates or updates document
 func (m *DocumentBeat) StoreDocument(chainDoc *domain.ChainDocument, cursor string, contractConfig *config.ContractConfig) error {
 	log.Infof("Storing chain document: %v, cursor: %v, contract config: %v", chainDoc, cursor, contractConfig)
 	doc, err := m.ToParsedDoc(chainDoc)
@@ -102,6 +105,7 @@ func (m *DocumentBeat) StoreDocument(chainDoc *domain.ChainDocument, cursor stri
 	return m.UpdateCursor(cursor)
 }
 
+//Creates/Deletes an edge
 func (m *DocumentBeat) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor string, contractConfig *config.ContractConfig) error {
 	log.Infof("Mutating chain edge: %v, delete Op: %v, cursor: %v, contract config: %v", chainEdge, deleteOp, cursor, contractConfig)
 	edgeName := chainEdge.DocEdgeName
@@ -174,6 +178,7 @@ func (m *DocumentBeat) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cu
 	return m.UpdateCursor(cursor)
 }
 
+// Deletes a document
 func (m *DocumentBeat) DeleteDocument(chainDoc *domain.ChainDocument, cursor string, contractConfig *config.ContractConfig) error {
 	log.Infof("Deleting chain document: %v, cursor: %v, contract config: %v", chainDoc, cursor, contractConfig)
 
@@ -184,6 +189,7 @@ func (m *DocumentBeat) DeleteDocument(chainDoc *domain.ChainDocument, cursor str
 	return m.UpdateCursor(cursor)
 }
 
+// Updates the cursor stored on the db
 func (m *DocumentBeat) UpdateCursor(cursor string) error {
 	// log.Infof("Updating cursor: %v", cursor)
 	_, err := m.ElasticSearch.Upsert(m.Config.CursorIndexName, CursorId, map[string]string{"cursor": cursor})
@@ -193,6 +199,7 @@ func (m *DocumentBeat) UpdateCursor(cursor string) error {
 	return nil
 }
 
+// Finds the current cursor
 func (m *DocumentBeat) GetCursor() (string, error) {
 
 	exists, err := m.CursorExists()
@@ -211,6 +218,7 @@ func (m *DocumentBeat) GetCursor() (string, error) {
 	return doc[CursorProperty].(string), nil
 }
 
+// Checks whether a cursor already exists
 func (m *DocumentBeat) CursorExists() (bool, error) {
 	log.Infof("Checking if cursor exists")
 	exists, err := m.ElasticSearch.DocumentExists(m.Config.CursorIndexName, CursorId)
@@ -221,6 +229,8 @@ func (m *DocumentBeat) CursorExists() (bool, error) {
 	return exists, nil
 }
 
+// Creates the elastic search indexes required for the cursor and the contracts
+// specified in the configuration file
 func (m *DocumentBeat) configureIndexes() error {
 
 	log.Infof("Configuring indexes...")
@@ -271,6 +281,7 @@ func (m *DocumentBeat) configureIndexes() error {
 // 	return nil
 // }
 
+// Returns the document with the specified id
 func (m *DocumentBeat) GetDocument(docId, docIndex string, fields []string) (map[string]interface{}, error) {
 
 	exists, err := m.DocumentExists(docId, docIndex)
@@ -289,6 +300,7 @@ func (m *DocumentBeat) GetDocument(docId, docIndex string, fields []string) (map
 	return doc, nil
 }
 
+// Checks whether the document with the specified id exists
 func (m *DocumentBeat) DocumentExists(docId, docIndex string) (bool, error) {
 	log.Infof("Checking if document: %v exists", docId)
 	exists, err := m.ElasticSearch.DocumentExists(docIndex, docId)
@@ -299,14 +311,17 @@ func (m *DocumentBeat) DocumentExists(docId, docIndex string) (bool, error) {
 	return exists, nil
 }
 
+// Deletes the current cursor index
 func (m *DocumentBeat) DeleteCursorIndex() error {
 	return m.DeleteIndex(m.Config.CursorIndexName)
 }
 
+// Checks whether a cursor index exists
 func (m *DocumentBeat) CursorIndexExists() (bool, error) {
 	return m.IndexExists(m.Config.CursorIndexName)
 }
 
+// Checks whether an index exists
 func (m *DocumentBeat) IndexExists(index string) (bool, error) {
 	log.Infof("Checking index exists: %v", index)
 	exists, err := m.ElasticSearch.IndexExists(index)
@@ -316,6 +331,7 @@ func (m *DocumentBeat) IndexExists(index string) (bool, error) {
 	return exists, nil
 }
 
+// Deletes the specified index
 func (m *DocumentBeat) DeleteIndex(index string) error {
 	exists, err := m.IndexExists(index)
 	if err != nil {
@@ -330,6 +346,8 @@ func (m *DocumentBeat) DeleteIndex(index string) error {
 	return nil
 }
 
+// Transforms an on chain document into a struct that better resembles the format as its going to be
+// stored in the db
 func (m *DocumentBeat) ToParsedDoc(doc *domain.ChainDocument) (map[string]interface{}, error) {
 
 	var singleTextField SingleTextSearchField
