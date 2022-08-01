@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-ES_USER=elastic ES_PASSWORD=TtH9DSBEGBYoA7FqI92DXV2u go run . ./config-cloud.yml
+ES_USER=elastic ES_PASSWORD= go run . ./config-cloud.yml
