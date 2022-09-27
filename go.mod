@@ -7,8 +7,8 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.16.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.20.0
-	github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220927181845-114d1d801c5d
-	github.com/sebastianmontero/hypha-document-cache-gql-go v0.0.0-20220927191714-68070567d4a9
+	github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220927215113-b6b04e42a09c
+	github.com/sebastianmontero/hypha-document-cache-gql-go v0.0.0-20220927215504-f10767456136
 	github.com/sebastianmontero/slog-go v0.0.0-20210213204103-60eda76e8d74
 	github.com/spf13/viper v1.8.0
 	github.com/streamingfast/bstream v0.0.2-0.20210811181043-4c1920a7e3e3
