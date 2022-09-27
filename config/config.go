@@ -191,6 +191,7 @@ type Config struct {
 	CursorIndexPrefix     string            `mapstructure:"cursor-index-prefix"`
 	FirehoseEndpoint      string            `mapstructure:"firehose-endpoint"`
 	DfuseApiKey           string            `mapstructure:"dfuse-api-key"`
+	DfuseAuthURL          string            `mapstructure:"dfuse-auth-url"`
 	EosEndpoint           string            `mapstructure:"eos-endpoint"`
 	ElasticEndpoint       string            `mapstructure:"elastic-endpoint"`
 	ElasticCA             string            `mapstructure:"elastic-ca"`
@@ -245,12 +246,12 @@ func (m *Config) GetSingleTextSearchFieldOp(contentType string) SingleTextSearch
 	return SingleTextSearchFieldOp(op)
 }
 
-//Generates the full cursor index name
+// Generates the full cursor index name
 func (m *Config) GetCursorIndexName() string {
 	return getIndexName(m.CursorIndexPrefix, CursorIndex)
 }
 
-//Generates a full index name
+// Generates a full index name
 func getIndexName(prefix, suffix string) string {
 	return fmt.Sprintf(`%v-%v`, prefix, suffix)
 }
