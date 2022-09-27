@@ -314,6 +314,7 @@ func (m *Config) String() string {
 				AddIntsAsStrings: %v
 				SingleTextSearchField: %v
 				CursorIndexName: %v
+				DfuseAuthURL: %v
 
 			}
 		`,
@@ -332,5 +333,6 @@ func (m *Config) String() string {
 		m.AddIntsAsStrings,
 		m.SingleTextSearchField,
 		m.CursorIndexName,
+		m.DfuseAuthURL,
 	)
 }
